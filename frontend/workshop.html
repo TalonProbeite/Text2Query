@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SQLCraft — Мастерская</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    body { overflow: hidden; }
+    .workshop-page-wrap { display: flex; flex-direction: column; height: 100vh; }
+  </style>
+</head>
+<body id="workshop-page">
+<div class="workshop-page-wrap">
+
+  <!-- ── NAVBAR ─────────────────────────────────────────── -->
+  <nav class="navbar" style="position: relative; flex-shrink: 0;">
+    <a class="navbar-logo" href="index.html">
+      <div class="navbar-logo-icon">⚡</div>
+      SQL<span>Craft</span>
+    </a>
+    <div class="navbar-links">
+      <span class="navbar-link" style="color: var(--text-dim); cursor: default; font-family: var(--font-mono); font-size: 12px;">
+        <span id="user-name">...</span>
+      </span>
+      <button class="btn btn-danger btn-sm" id="logout-btn">⏻ Выйти</button>
+    </div>
+  </nav>
+
+  <!-- ── WORKSHOP LAYOUT ────────────────────────────────── -->
+  <div class="workshop-layout" style="flex: 1; overflow: hidden;">
+
+    <!-- ── SIDEBAR ──────────────────────────────────────── -->
+    <aside class="sidebar">
+
+      <!-- DB connection -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-title" style="display:flex; align-items:center; justify-content:space-between;">
+          <span>Базы данных</span>
+          <button class="btn-icon" id="db-connect-btn" title="Добавить подключение" style="width:22px;height:22px;font-size:14px;">+</button>
+        </div>
+        <div id="db-list">
+          <!-- Rendered by JS -->
+          <div style="font-size:12px; font-family:var(--font-mono); color:var(--text-dim); padding: 6px 2px;">
+            Нет подключений
+          </div>
+        </div>
+      </div>
+
+      <!-- History -->
+      <div class="sidebar-section" style="border-bottom: none; padding-bottom: 8px;">
+        <div class="sidebar-section-title">История</div>
+      </div>
+      <div class="sidebar-history" id="history-list">
+        <!-- Rendered by JS -->
+      </div>
+
+    </aside>
+
+    <!-- ── MAIN AREA ─────────────────────────────────────── -->
+    <div class="workshop-main">
+
+      <!-- header -->
+      <div class="workshop-header">
+        <div class="workshop-header-left">
+          <div>
+            <div class="workshop-header-title">Мастерская</div>
+            <div class="workshop-header-sub">Генерация и выполнение SQL</div>
+          </div>
+        </div>
+        <div class="workshop-header-right">
+          <span class="badge badge-green" style="font-size: 11px;">
+            <span class="status-dot online" style="width:6px;height:6px;"></span> MOCK MODE
+          </span>
+        </div>
+      </div>
+
+      <!-- scrollable body -->
+      <div class="workshop-body">
+
+        <!-- ── PROMPT INPUT ─────────────────────────────── -->
+        <div class="prompt-area">
+          <div class="prompt-toolbar">
+            <span class="prompt-toolbar-label">Промт</span>
+
+            <!-- dialect selector -->
+            <div class="dialect-wrap">
+              <button class="dialect-btn" id="dialect-btn">
+                <span>🗄</span>
+                <span class="dialect-current">PostgreSQL</span>
+                <span class="arrow">▾</span>
+              </button>
+              <div class="dialect-dropdown" id="dialect-dropdown">
+                <div class="dialect-option active" data-value="postgresql" data-label="PostgreSQL">
+                  PostgreSQL <span class="check">✓</span>
+                </div>
+                <div class="dialect-option" data-value="mysql" data-label="MySQL">MySQL</div>
+                <div class="dialect-option" data-value="mariadb" data-label="MariaDB">MariaDB</div>
+                <div class="dialect-option" data-value="sqlite" data-label="SQLite">SQLite</div>
+                <div class="dialect-option" data-value="mssql" data-label="MS SQL Server">MS SQL Server</div>
+                <div class="dialect-option" data-value="oracle" data-label="Oracle">Oracle</div>
+                <div class="dialect-option" data-value="bigquery" data-label="BigQuery">BigQuery</div>
+                <div class="dialect-option" data-value="clickhouse" data-label="ClickHouse">ClickHouse</div>
+              </div>
+            </div>
+          </div>
+
+          <textarea
+            class="prompt-textarea"
+            id="prompt-textarea"
+            placeholder="Например: «Покажи топ-10 клиентов по выручке за последние 30 дней, с количеством заказов»"
+          ></textarea>
+
+          <div class="prompt-footer">
+            <div class="prompt-footer-left">
+              <span class="prompt-hint">Ctrl+Enter — генерировать</span>
+            </div>
+            <button class="btn btn-primary btn-sm" id="generate-btn">
+              ⚡ Генерировать SQL
+            </button>
+          </div>
+        </div>
+
+        <!-- ── SQL OUTPUT ────────────────────────────────── -->
+        <div class="sql-output-card">
+          <div class="sql-output-header">
+            <span class="card-title"><span class="dot"></span> SQL-запрос</span>
+            <div class="sql-output-actions">
+              <button class="btn btn-ghost btn-sm" id="exec-sql-btn" style="display: none;">▶ Выполнить</button>
+              <!-- shown only when toggle is ON -->
+              <button class="btn-icon" id="copy-sql-btn" title="Копировать SQL">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </button>
+              <button class="btn-icon" id="export-sql" title="Скачать .sql">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="sql-output-body" id="sql-output-body">
+            <span class="sql-placeholder">SQL-запрос появится здесь после генерации...</span>
+          </div>
+        </div>
+
+        <!-- ── EXECUTE SECTION (shown only when DB connected) ── -->
+        <div id="execute-section" style="display: none;" class="execute-section">
+
+          <div class="execute-row">
+            <div class="execute-row-info">
+              <div class="execute-row-label">Выполнить в БД</div>
+              <div class="execute-row-desc">Автоматически запускать запрос после генерации</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="execute-toggle" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <!-- RESULTS (shown when toggle ON) -->
+          <div id="results-section" style="display: none;">
+            <div class="results-card">
+              <div class="results-header">
+                <span class="card-title"><span class="dot"></span> Результаты</span>
+                <div class="results-export-btns">
+                  <button class="btn btn-secondary btn-sm" id="export-csv">⬇ CSV</button>
+                  <button class="btn btn-secondary btn-sm" id="export-json">⬇ JSON</button>
+                </div>
+              </div>
+              <div class="results-table-wrap">
+                <table class="results-table">
+                  <thead><tr id="results-thead"></tr></thead>
+                  <tbody id="results-tbody">
+                    <tr>
+                      <td colspan="5" style="text-align:center; color: var(--text-dim); font-style:italic; padding: 24px;">
+                        Нет данных — нажмите «Выполнить» или сгенерируйте запрос
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="results-footer">
+                <span class="status-dot online"></span>
+                <span id="results-footer-info" style="color: var(--text-muted);">Ожидание запроса</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <!-- /execute-section -->
+
+        <!-- bottom padding -->
+        <div style="height: 24px;"></div>
+
+      </div><!-- /workshop-body -->
+    </div><!-- /workshop-main -->
+
+  </div><!-- /workshop-layout -->
+
+</div><!-- /workshop-page-wrap -->
+
+<!-- ── DB CONNECT MODAL ──────────────────────────────── -->
+<div class="modal-overlay" id="db-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">🔌 Подключить базу данных</span>
+      <button class="modal-close" onclick="closeDBModal()">✕</button>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+      <div class="input-group">
+        <label class="input-label">Тип БД</label>
+        <select class="select" id="db-type">
+          <option value="postgresql">PostgreSQL</option>
+          <option value="mysql">MySQL / MariaDB</option>
+          <option value="sqlite">SQLite</option>
+          <option value="mssql">MS SQL Server</option>
+        </select>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 100px; gap: 10px;">
+        <div class="input-group">
+          <label class="input-label">Хост</label>
+          <input class="input" id="db-host" type="text" placeholder="localhost" value="localhost" />
+        </div>
+        <div class="input-group">
+          <label class="input-label">Порт</label>
+          <input class="input" id="db-port" type="text" placeholder="5432" value="5432" />
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">Имя базы данных</label>
+        <input class="input" id="db-name" type="text" placeholder="mydb" />
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div class="input-group">
+          <label class="input-label">Пользователь</label>
+          <input class="input" id="db-user" type="text" placeholder="postgres" />
+        </div>
+        <div class="input-group">
+          <label class="input-label">Пароль</label>
+          <input class="input" id="db-pass" type="password" placeholder="••••••••" />
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 10px; margin-top: 8px;">
+        <button class="btn btn-secondary" style="flex: 1; justify-content: center;" onclick="closeDBModal()">Отмена</button>
+        <button class="btn btn-primary" style="flex: 1; justify-content: center;" id="db-connect-submit">Подключить</button>
+      </div>
+
+      <p style="font-size: 11px; font-family: var(--font-mono); color: var(--text-dim); text-align: center;">
+        В MOCK режиме подключение всегда успешно
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ── FOOTER ─────────────────────────────────────────── -->
+<footer class="footer" style="flex-shrink: 0; display: none;" id="workshop-footer">
+  <!-- hidden by default in workshop to save space, can be toggled -->
+</footer>
+
+<!-- Compact footer bar -->
+<div style="
+  border-top: 1px solid var(--border);
+  padding: 8px 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 11px; font-family: var(--font-mono); color: var(--text-dim);
+  background: var(--bg-panel); flex-shrink: 0;
+">
+  <div style="display: flex; gap: 20px;">
+    <a href="#" style="color: var(--text-dim);">Документация</a>
+    <a href="#" style="color: var(--text-dim);">API</a>
+    <a href="#" style="color: var(--text-dim);">Поддержка</a>
+    <a href="#" style="color: var(--text-dim);">Конфиденциальность</a>
+  </div>
+  <span>© 2025 SQLCraft</span>
+</div>
+
+<div id="toast-container"></div>
+
+
+<script src="js/main.js"></script>
+</body>
+</html>

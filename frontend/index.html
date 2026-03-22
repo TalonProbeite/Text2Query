@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SQLCraft — SQL из текста</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body id="index-page">
+
+<!-- ── NAVBAR ─────────────────────────────────────────── -->
+<nav class="navbar">
+  <a class="navbar-logo" href="index.html">
+    <div class="navbar-logo-icon">⚡</div>
+    SQL<span>Craft</span>
+  </a>
+  <div class="navbar-links">
+    <a class="navbar-link" href="#features">Возможности</a>
+    <a class="navbar-link" href="#how-it-works">Как работает</a>
+    <a class="btn btn-secondary btn-sm" href="auth.html">Войти</a>
+    <a class="btn btn-primary btn-sm" href="auth.html">Начать бесплатно</a>
+  </div>
+</nav>
+
+<main class="page-content">
+
+  <!-- ── HERO ──────────────────────────────────────────── -->
+  <section class="hero">
+    <div class="hero-grid"></div>
+    <div class="hero-glow"></div>
+
+    <div class="hero-content">
+      <div class="hero-eyebrow fade-up">
+        <span class="status-dot online"></span>
+        Beta — уже доступно
+      </div>
+      <h1 class="hero-title fade-up fade-up-1">
+        Пишите на русском —<br>
+        <span class="line2">получайте SQL</span>
+      </h1>
+      <p class="hero-desc fade-up fade-up-2">
+        SQLCraft переводит ваши запросы на естественном языке в точные SQL-запросы,
+        поддерживает все популярные диалекты и может сразу выполнить их
+        в вашей базе данных.
+      </p>
+      <div class="hero-actions fade-up fade-up-3">
+        <a class="btn btn-primary" href="auth.html" data-goto="auth.html">
+          ⚡ Попробовать мастерскую
+        </a>
+        <a class="btn btn-secondary" href="#how-it-works">
+          Узнать больше
+        </a>
+      </div>
+
+      <!-- typing hint -->
+      <div style="margin-top: 32px; font-family: var(--font-mono); font-size: 13px; color: var(--text-dim);" class="fade-up fade-up-4">
+        <span style="color: var(--accent)">›</span>&nbsp;
+        <span id="hero-typing"></span><span class="cursor" id="hero-cursor">|</span>
+      </div>
+    </div>
+
+    <!-- SQL preview card -->
+    <div class="hero-sql-preview fade-up fade-up-5" style="display:none;"><!-- shown on wide screens via css --></div>
+  </section>
+
+  <!-- Floating SQL card for wider screens -->
+  <style>
+    @media (min-width: 1100px) {
+      .hero-content { max-width: 560px; }
+      .hero-sql-preview { display: block !important; }
+    }
+  </style>
+  <!-- This card is rendered absolutely inside .hero -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const preview = document.querySelector('.hero-sql-preview');
+      if (!preview) return;
+      preview.innerHTML = `
+        <div class="sql-preview-bar">
+          <span class="dot-red"></span>
+          <span class="dot-yellow"></span>
+          <span class="dot-green"></span>
+          <span class="sql-preview-filename">query_result.sql</span>
+        </div>
+        <div class="sql-preview-body">
+<span class="sql-cmt">-- "Топ-10 клиентов по выручке"</span>
+<span class="sql-kw">SELECT</span>
+  u.id, u.name, u.email,
+  <span class="sql-fn">COUNT</span>(o.id)  <span class="sql-kw">AS</span> <span class="sql-tbl">orders</span>,
+  <span class="sql-fn">SUM</span>(o.total) <span class="sql-kw">AS</span> <span class="sql-tbl">revenue</span>
+<span class="sql-kw">FROM</span> <span class="sql-tbl">users</span> u
+<span class="sql-kw">LEFT JOIN</span> <span class="sql-tbl">orders</span> o
+  <span class="sql-kw">ON</span> o.user_id = u.id
+<span class="sql-kw">WHERE</span> u.is_active = <span class="sql-num">true</span>
+<span class="sql-kw">GROUP BY</span> u.id
+<span class="sql-kw">ORDER BY</span> <span class="sql-tbl">revenue</span> <span class="sql-kw">DESC</span>
+<span class="sql-kw">LIMIT</span> <span class="sql-num">10</span>;</div>`;
+    });
+  </script>
+
+  <!-- ── FEATURES ───────────────────────────────────────── -->
+  <section class="section" id="features">
+    <div class="section-label">Возможности</div>
+    <h2 class="section-title">Всё что нужно для работы с данными</h2>
+    <p class="section-desc">От простого SELECT до сложных аналитических запросов — SQLCraft справляется с любой задачей.</p>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">🧠</div>
+        <div class="feature-title">Генерация из текста</div>
+        <div class="feature-desc">Опишите задачу на русском или английском — получите готовый SQL-запрос с учётом вашей схемы данных.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔌</div>
+        <div class="feature-title">Прямое подключение к БД</div>
+        <div class="feature-desc">Подключайте PostgreSQL, MySQL, SQLite и сразу выполняйте запросы прямо в интерфейсе.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📤</div>
+        <div class="feature-title">Экспорт результатов</div>
+        <div class="feature-desc">Выгружайте данные в CSV, JSON или сохраняйте SQL-файл — всё в один клик.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🗂️</div>
+        <div class="feature-title">История запросов</div>
+        <div class="feature-desc">Все сгенерированные запросы сохраняются. Возвращайтесь к ним в любой момент.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── HOW IT WORKS ───────────────────────────────────── -->
+  <section class="section" id="how-it-works" style="background: var(--bg-panel); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+    <div class="section-label">Как работает</div>
+    <h2 class="section-title">Три шага до результата</h2>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div>
+          <div class="step-title">Зарегистрируйтесь и войдите</div>
+          <div class="step-desc">Создайте аккаунт за минуту — никаких кредитных карт, email + пароль и готово.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div>
+          <div class="step-title">Опишите задачу текстом</div>
+          <div class="step-desc">Напишите что вам нужно в свободной форме. Выберите диалект SQL и нажмите «Генерировать».</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div>
+          <div class="step-title">Выполните и экспортируйте</div>
+          <div class="step-desc">Подключите базу данных, запустите запрос и скачайте результаты в нужном формате.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── CTA ───────────────────────────────────────────── -->
+  <section class="section" style="text-align: center;">
+    <div class="section-label" style="justify-content: center; display: flex;">Начать сейчас</div>
+    <h2 class="section-title" style="max-width: 500px; margin: 0 auto 16px;">Готовы попробовать SQLCraft?</h2>
+    <p class="section-desc" style="margin: 0 auto 32px; text-align: center;">Бесплатный доступ. Нет ограничений на старте.</p>
+    <a class="btn btn-primary" href="auth.html" style="font-size: 14px; padding: 12px 28px;">⚡ Открыть мастерскую</a>
+  </section>
+
+</main>
+
+<!-- ── FOOTER ─────────────────────────────────────────── -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand-name">SQL<span>Craft</span></div>
+      <p class="footer-brand-desc">Генерация SQL-запросов из текста и прямая работа с вашей базой данных.</p>
+    </div>
+    <div>
+      <div class="footer-col-title">Продукт</div>
+      <div class="footer-col-links">
+        <a href="#">Возможности</a>
+        <a href="#">Тарифы</a>
+        <a href="#">Changelog</a>
+        <a href="#">Дорожная карта</a>
+      </div>
+    </div>
+    <div>
+      <div class="footer-col-title">Разработчикам</div>
+      <div class="footer-col-links">
+        <a href="#">API Docs</a>
+        <a href="#">SDK</a>
+        <a href="#">Webhooks</a>
+        <a href="#">Status</a>
+      </div>
+    </div>
+    <div>
+      <div class="footer-col-title">Компания</div>
+      <div class="footer-col-links">
+        <a href="#">О нас</a>
+        <a href="#">Блог</a>
+        <a href="#">Поддержка</a>
+        <a href="#">GitHub</a>
+      </div>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>© 2025 SQLCraft. Все права защищены.</span>
+    <div class="footer-bottom-links">
+      <a href="#">Конфиденциальность</a>
+      <a href="#">Условия</a>
+      <a href="#">Cookies</a>
+    </div>
+  </div>
+</footer>
+
+<div id="toast-container"></div>
+<script src="js/main.js"></script>
+</body>
+</html>
