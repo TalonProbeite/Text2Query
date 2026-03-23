@@ -17,7 +17,10 @@ class User(Base):
     is_active = Column(Boolean,default=True)
     plan_expires_at = Column(DateTime, default=None)
     api_key  = Column(String, nullable=True,default=None, unique=True)
-    databases = relationship("Database", back_populates="user")
+    is_verified = Column(Boolean,default=False)
+    verification_token = Column(String, default=None)
 
+    databases = relationship("Database", back_populates="user")
+    
     def __repr__(self):
         return f"<User(id={self.id}, name={self.name}, email={self.email}, plan={self.plan})>"
