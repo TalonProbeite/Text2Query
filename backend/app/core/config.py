@@ -5,7 +5,7 @@ from pathlib import Path
 class Settings(BaseSettings):
 
     app_name: str = "SQLCraft"
-    debug: bool = True
+    debug: bool = False
 
     database_url: str = "postgresql://user:pass@localhost/sqlcraft"
 

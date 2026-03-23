@@ -1,13 +1,25 @@
 from fastapi import FastAPI 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from contextlib import asynccontextmanager
 
-from core.config import settings
 
+from app.core.config import settings
+from app.db.database import init_db
+from app.core.logger import setup_logging
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db()
+    setup_logging()
+    yield
+    pass
+    
 
 app = FastAPI(
     title=settings.app_name,
     debug=settings.debug,
+    lifespan=lifespan
 )
 
 
