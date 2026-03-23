@@ -16,7 +16,7 @@ class User(Base):
     plan = Column(String,default="free")
     is_active = Column(Boolean,default=True)
     plan_expires_at = Column(DateTime, default=None)
-    api_key  = Column(String, nullable=True)
+    api_key  = Column(String, nullable=True,default=None, unique=True)
     databases = relationship("Database", back_populates="user")
 
     def __repr__(self):
