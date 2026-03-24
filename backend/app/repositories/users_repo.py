@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional
+from typing import  Optional
 from sqlalchemy import select
 
 from app.models.users import User
