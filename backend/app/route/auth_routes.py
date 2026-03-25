@@ -1,32 +1,36 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
+from datetime import datetime, timezone, timedelta
 
-from app.schemas.auth import AuthResponse , UserLogIn , UserRegister
+from app.schemas.auth import AuthResponse , UserLogIn , UserRegister 
 from app.db.database import get_db
 from app.repositories.users_repo import UserRepository
-from app.core.exceptions import InvalidPassword , UserNotFound ,UserBannedError , JWTTokenDecodeError , JWTTokenGenerateError
+from app.core.exceptions import InvalidPassword , UserNotFound ,UserBannedError , JWTTokenDecodeError , JWTTokenGenerateError, UserAlreadyExists
 from app.utils.jwt import encode_jwt
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
 
-@router.post("/login/", response_model=AuthResponse)
+@router.post("/login", response_model=AuthResponse)
 async def login(user_data:UserLogIn, db:AsyncSession = Depends(get_db)):
     repo = UserRepository(db)
     try:
         user_model = await repo.user_login(**user_data.model_dump())
-        user_response = UserResponse.model_validate(user_model)
-        token = encode_jwt({"id": user_response.id, "email": user_response.email})
+        token = encode_jwt({
+            "sub": str(user_model.id),
+            "email": user_model.email,
+            "iat": datetime.now(timezone.utc),
+            "exp": datetime.now(timezone.utc) + timedelta(minutes=30)
+        })
         return AuthResponse(
             jwt_token=token,
-            name=user_response.name,
-            email=user_response.email,
-            plan=user_response.plan
+            id=user_model.id,
+            name=user_model.name,
+            email=user_model.email,
+            plan=user_model.plan
         )
-
-        return user
     except InvalidPassword as e:
         logger.info(f"Invalid password:{e.__cause__}")
         raise HTTPException(status_code=401, 
@@ -45,3 +49,28 @@ async def login(user_data:UserLogIn, db:AsyncSession = Depends(get_db)):
 
 
     
+@router.post("/signup", response_model=AuthResponse)
+async def signup(user_data:UserRegister, db:AsyncSession = Depends(get_db)):
+    repo = UserRepository(db)
+    try:
+        user_model = await repo.user_registration(**user_data.model_dump())
+        token = encode_jwt({
+            "sub": str(user_model.id),
+            "email": user_model.email,
+            "iat": datetime.now(timezone.utc),
+            "exp": datetime.now(timezone.utc) + timedelta(minutes=30)
+        })
+        return AuthResponse(
+            jwt_token=token,
+            id=user_model.id,
+            name=user_model.name,
+            email=user_model.email,
+            plan=user_model.plan
+        )
+    except UserAlreadyExists as e:
+        logger.info(f"Email already exists:{e.__cause__}")
+        raise HTTPException(status_code=400, detail="Registration failed")
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+        

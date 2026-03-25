@@ -22,7 +22,7 @@ class UserRepository:
         result = await self.db.execute(select(User).where(User.email == email))
         return result.scalar_one_or_none()
     
-    async def user_registration(self, name: str, email: str, password: str)-> Optional[User]:
+    async def user_registration(self, name: str, email: str, password: str)-> User:
         if await self.get_by_email(email):
             raise UserAlreadyExists() 
         
