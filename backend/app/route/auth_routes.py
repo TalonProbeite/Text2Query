@@ -22,7 +22,7 @@ async def login(user_data:UserLogIn, db:AsyncSession = Depends(get_db)):
             "sub": str(user_model.id),
             "email": user_model.email,
             "iat": datetime.now(timezone.utc),
-            "exp": datetime.now(timezone.utc) + timedelta(minutes=30)
+            "exp": datetime.now(timezone.utc) + timedelta(hours=8)
         })
         return AuthResponse(
             jwt_token=token,
@@ -58,7 +58,7 @@ async def signup(user_data:UserRegister, db:AsyncSession = Depends(get_db)):
             "sub": str(user_model.id),
             "email": user_model.email,
             "iat": datetime.now(timezone.utc),
-            "exp": datetime.now(timezone.utc) + timedelta(minutes=30)
+            "exp": datetime.now(timezone.utc) + timedelta(hours=8)
         })
         return AuthResponse(
             jwt_token=token,
