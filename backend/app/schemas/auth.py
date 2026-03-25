@@ -13,3 +13,10 @@ class UserLogIn(BaseModel):
     password:str
 
 
+class AuthResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
+    jwt_token:str
+    name: str
+    email: str
+    plan: str

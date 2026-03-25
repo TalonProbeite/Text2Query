@@ -7,6 +7,9 @@ from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.db.database import init_db
 from app.core.logger import setup_logging
+from app.route.auth_routes import router as auth_router
+from app.models import ___init__
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -22,6 +25,7 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+app.include_router(auth_router  )
 
 app.add_middleware(
     CORSMiddleware,
