@@ -4,7 +4,7 @@ from sqlalchemy import select
 
 from app.models.users import User
 from app.utils.pas_hashing import get_hash_pass , match_password
-from app.core.exceptions import InvalidPassword , UserAlreadyExists , UserNotFound
+from app.core.exceptions import InvalidPassword , UserAlreadyExists , UserNotFound , UserBannedError
 
 
 
@@ -41,13 +41,15 @@ class UserRepository:
             await self.db.rollback()
             raise e
         
-    async def user_login(self, email: str, password: str)-> Optional[User]:
+    async def user_login(self, email: str, password: str)-> User:
 
         user = await self.get_by_email(email)
 
-        if not user:
+        if not user:    
             raise UserNotFound()
-        
+        if not user.is_active:
+            raise UserBannedError()
+
         try:
             match_password(user.hashed_password, password)
         except Exception as e:
