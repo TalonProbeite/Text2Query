@@ -69,5 +69,6 @@ coverage.xml
 .pdm-python
 .python-version
 
+certs/
 
 notes.txt
