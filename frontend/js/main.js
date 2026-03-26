@@ -152,13 +152,21 @@ const api = {
       await delay(700);
       return { token: 'mock-jwt-token-xyz', user: { name: email.split('@')[0], email } };
     }
-    const res = await fetch(`${API_BASE}/auth/login`, {
+    const res = await fetch(`/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
-    if (!res.ok) throw new Error('Неверный email или пароль');
-    return res.json();
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Неверный email или пароль');
+    }
+    const data = await res.json();
+    // бэк возвращает: { jwt_token, id, name, email, plan }
+    return {
+      token: data.jwt_token,
+      user: { id: data.id, name: data.name, email: data.email, plan: data.plan },
+    };
   },
 
   async register(name, email, password) {
@@ -166,13 +174,20 @@ const api = {
       await delay(800);
       return { token: 'mock-jwt-token-xyz', user: { name, email } };
     }
-    const res = await fetch(`${API_BASE}/auth/register`, {
+    const res = await fetch(`/auth/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, password }),
     });
-    if (!res.ok) throw new Error('Ошибка регистрации');
-    return res.json();
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Ошибка регистрации');
+    }
+    const data = await res.json();
+    return {
+      token: data.jwt_token,
+      user: { id: data.id, name: data.name, email: data.email, plan: data.plan },
+    };
   },
 };
 
@@ -192,9 +207,22 @@ const auth = {
     localStorage.removeItem('sqlcraft_user');
     window.location.href = 'index.html';
   },
-  isLoggedIn() { return !!this.getToken(); },
+  // Проверяем exp прямо из JWT payload — без запроса к серверу
+  isLoggedIn() {
+    const token = this.getToken();
+    if (!token) return false;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.exp * 1000 > Date.now();
+    } catch {
+      return false;
+    }
+  },
   requireAuth() {
-    if (!this.isLoggedIn()) { window.location.href = 'auth.html'; return false; }
+    if (!this.isLoggedIn()) {
+      this.logout(); // чистим протухшие данные
+      return false;
+    }
     return true;
   },
 };
