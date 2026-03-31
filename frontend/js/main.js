@@ -147,47 +147,37 @@ const api = {
     return res.json();
   },
 
-  async login(email, password) {
-    if (MOCK) {
-      await delay(700);
-      return { token: 'mock-jwt-token-xyz', user: { name: email.split('@')[0], email } };
-    }
+async login(email, password) {
     const res = await fetch(`/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || 'Неверный email или пароль');
+      const status = res.status;
+      if (status === 400) throw { type: 'error', msg: 'Неверный email или пароль' };
+      if (status === 500) throw { type: 'error', msg: 'Ошибка сервера. Попробуйте позже' };
+      throw { type: 'error', msg: 'Неизвестная ошибка' };
     }
     const data = await res.json();
-    // бэк возвращает: { jwt_token, id, name, email, plan }
-    return {
-      token: data.jwt_token,
-      user: { id: data.id, name: data.name, email: data.email, plan: data.plan },
-    };
+    return { token: data.jwt_token, user: { id: data.id, name: data.name, email: data.email, plan: data.plan } };
   },
 
   async register(name, email, password) {
-    if (MOCK) {
-      await delay(800);
-      return { token: 'mock-jwt-token-xyz', user: { name, email } };
-    }
     const res = await fetch(`/auth/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, password }),
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || 'Ошибка регистрации');
+      const status = res.status;
+      if (status === 401) throw { type: 'error', msg: 'Неверный email или пароль' };
+      if (status === 403) throw { type: 'error', msg: 'Доступ запрещён' };
+      if (status === 500) throw { type: 'error', msg: 'Ошибка сервера. Попробуйте позже' };
+      throw { type: 'error', msg: 'Неизвестная ошибка' };
     }
     const data = await res.json();
-    return {
-      token: data.jwt_token,
-      user: { id: data.id, name: data.name, email: data.email, plan: data.plan },
-    };
+    return { token: data.jwt_token, user: { id: data.id, name: data.name, email: data.email, plan: data.plan } };
   },
 };
 
@@ -387,7 +377,7 @@ function initWorkshop() {
   }
 
   // Execute manually
-  if (execBtn) execBtn.addEventListener('click', handleExecute);
+
 
   // Copy SQL
   const copyBtn = document.getElementById('copy-sql-btn');
@@ -400,8 +390,8 @@ function initWorkshop() {
   const executeToggle = document.getElementById('execute-toggle');
   const resultsSection = document.getElementById('results-section');
   const executeSection = document.getElementById('execute-section');
-  const execBtn = document.getElementById('exec-sql-btn');
-
+  const execBtn = document.getElementById('exec-sql-btn');  
+  if (execBtn) execBtn.addEventListener('click', handleExecute);
   function syncExecBtn() {
     if (!execBtn) return;
     // кнопка «Выполнить» видна только когда: есть SQL + галочка включена
@@ -631,15 +621,16 @@ function initAuth() {
   document.getElementById('login-btn')?.addEventListener('click', async () => {
     const email = document.getElementById('login-email')?.value?.trim();
     const pass  = document.getElementById('login-pass')?.value;
-    if (!email || !pass) return showToast('Заполните все поля', 'error');
+    if (!email || !pass) return showAlert('login', 'Заполните все поля');
     const btn = document.getElementById('login-btn');
     btn.disabled = true; btn.textContent = 'Вход...';
+    clearAlert('login');
     try {
       const { token, user } = await api.login(email, pass);
       auth.setSession(token, user);
       window.location.href = 'workshop.html';
     } catch (err) {
-      showToast(err.message, 'error');
+      showAlert('login', err.msg || 'Неизвестная ошибка');
     } finally {
       btn.disabled = false; btn.textContent = 'Войти';
     }
@@ -650,19 +641,21 @@ function initAuth() {
     const name  = document.getElementById('reg-name')?.value?.trim();
     const email = document.getElementById('reg-email')?.value?.trim();
     const pass  = document.getElementById('reg-pass')?.value;
-    if (!name || !email || !pass) return showToast('Заполните все поля', 'error');
+    if (!name || !email || !pass) return showAlert('register', 'Заполните все поля');
+    if (pass.length < 8) return showAlert('register', 'Пароль должен быть минимум 8 символов');
     const btn = document.getElementById('register-btn');
     btn.disabled = true; btn.textContent = 'Регистрация...';
+    clearAlert('register');
     try {
       const { token, user } = await api.register(name, email, pass);
       auth.setSession(token, user);
       window.location.href = 'workshop.html';
     } catch (err) {
-      showToast(err.message, 'error');
+      showAlert('register', err.msg || 'Неизвестная ошибка');
     } finally {
       btn.disabled = false; btn.textContent = 'Создать аккаунт';
     }
-  });
+});
 }
 
 /* ── INDEX PAGE INIT ────────────────────────────────────── */
@@ -706,3 +699,23 @@ document.addEventListener('DOMContentLoaded', () => {
   initAuth();
   initWorkshop();
 });
+
+function showAlert(form, msg) {
+    const id = form === 'login' ? 'alert-login' : 'alert-register';
+    let el = document.getElementById(id);
+    if (!el) {
+      el = document.createElement('div');
+      el.id = id;
+      el.className = 'auth-alert';
+      const btn = document.getElementById(form === 'login' ? 'login-btn' : 'register-btn');
+      btn?.parentNode.insertBefore(el, btn);
+    }
+    el.textContent = msg;
+    el.style.display = 'flex';
+  }
+
+  function clearAlert(form) {
+    const id = form === 'login' ? 'alert-login' : 'alert-register';
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  }

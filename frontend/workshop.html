@@ -9,6 +9,20 @@
     body { overflow: hidden; }
     .workshop-page-wrap { display: flex; flex-direction: column; height: 100vh; }
   </style>
+  <script>
+  (function() {
+    var token = localStorage.getItem('sqlcraft_token');
+    if (!token) { window.location.replace('index.html'); return; }
+    try {
+      var payload = JSON.parse(atob(token.split('.')[1]));
+      if (payload.exp * 1000 <= Date.now()) { 
+        localStorage.removeItem('sqlcraft_token');
+        localStorage.removeItem('sqlcraft_user');
+        window.location.replace('index.html'); 
+      }
+    } catch(e) { window.location.replace('index.html'); }
+  })();
+</script>
 </head>
 <body id="workshop-page">
 <div class="workshop-page-wrap">
