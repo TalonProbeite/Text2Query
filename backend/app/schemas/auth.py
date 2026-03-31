@@ -16,7 +16,7 @@ class UserLogIn(BaseModel):
 class AuthResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     
-    jwt_token:str
+
     id: int
     name: str
     email: str
