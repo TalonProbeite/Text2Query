@@ -9,6 +9,8 @@ from app.db.database import init_db
 from app.core.logger import setup_logging
 from app.route.auth_routes import router as auth_router
 from app.models import ___init__
+from app.middleware.auth import AuthMiddleware
+from app.middleware.logging import LoggingMiddleware
 
 
 @asynccontextmanager
@@ -27,6 +29,8 @@ app = FastAPI(
 
 app.include_router(auth_router  )
 
+app.add_middleware(LoggingMiddleware)
+app.add_middleware(AuthMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -36,6 +40,7 @@ app.add_middleware(
 )
 
 
+ 
 app.mount(
     "/",
     StaticFiles(directory=settings.static_dir,html=True),
