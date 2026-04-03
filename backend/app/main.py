@@ -27,7 +27,7 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-app.include_router(auth_router  )
+app.include_router(auth_router)
 
 app.add_middleware(LoggingMiddleware)
 app.add_middleware(AuthMiddleware)

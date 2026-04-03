@@ -94,3 +94,16 @@ async def signup(user_data:UserRegister,response: Response, db:AsyncSession = De
         logger.error(f"Unexpected error: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
         
+
+
+@router.post("/logout")
+async def logout(response: Response):
+    try:
+        response.delete_cookie(
+            key="access_token",
+            path="/"
+        )
+        return {"success":True}
+    except Exception as e:
+        logger.info(f"error on exit:{e}") 
+        return {"success":False}
