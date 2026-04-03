@@ -10,10 +10,14 @@ from app.core.logger import logger
 PUBLIC_ROUTES = {
     "/auth/login",
     "/auth/signup",
+    "/auth.html",
     "/",
     "/docs",
     "/openapi.json",  
-    "/redoc",        
+    "/redoc",
+    "/index.html",       
+    "/css/style.css", 
+    "/js/main.js",
 }
 
 

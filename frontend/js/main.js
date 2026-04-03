@@ -1,12 +1,9 @@
 /* =====================================================
    SQLCRAFT — main.js
-   Mock frontend logic (no backend yet).
-   All API calls are stubbed with setTimeout / fake data.
    ===================================================== */
 
 /* ── CONFIG ─────────────────────────────────────────────── */
-const API_BASE = '/api/v1';            // будущий бэкенд
-const MOCK = true;                     // true → использовать моки
+const API_BASE = '/api/v1';
 
 /* ── MOCK DATA ──────────────────────────────────────────── */
 const MOCK_SQL_TEMPLATES = {
@@ -101,66 +98,134 @@ function copyToClipboard(text) {
   navigator.clipboard.writeText(text).then(() => showToast('Скопировано в буфер', 'success'));
 }
 
-/* ── API LAYER (stub) ───────────────────────────────────── */
+/* ── AUTH MODULE ────────────────────────────────────────── */
+const auth = {
+  getUser() {
+    try { return JSON.parse(localStorage.getItem('sqlcraft_user') || 'null'); }
+    catch { return null; }
+  },
+  setSession(user) {
+    localStorage.setItem('sqlcraft_user', JSON.stringify(user));
+  },
+  async logout() {
+
+  localStorage.removeItem('sqlcraft_user');
+
+ 
+  sessionStorage.clear();
+
+  try {
+   
+    await fetch('/auth/logout', {
+      method: 'POST',
+      credentials: 'include',
+    });
+  } catch (e) {
+    console.warn('Logout request failed:', e);
+  }
+
+ 
+  window.location.href = 'index.html';
+},
+  isLoggedIn() {
+    return !!this.getUser();
+  },
+  requireAuth() {
+    if (!this.isLoggedIn()) { this.logout(); return false; }
+    return true;
+  },
+};
+
+/* ── GLOBAL 401/403 INTERCEPTOR ─────────────────────────── */
+(function() {
+  const _fetch = window.fetch;
+  window.fetch = async function(...args) {
+    const res = await _fetch(...args);
+    const url = args[0].toString();
+    if ((res.status === 401 || res.status === 403) && !url.includes('/auth/')) {
+      const data = await res.clone().json().catch(() => ({}));
+      const msg = data.detail || 'Сессия истекла';
+      sessionStorage.setItem('auth_error', msg);
+      auth.logout(); // теперь async, но не ждём — редирект произойдёт
+    }
+    return res;
+  };
+})();
+
+/* ── API LAYER ──────────────────────────────────────────── */
 const api = {
   async generateSQL(prompt, dialect) {
-    if (MOCK) {
-      await delay(900 + Math.random() * 600);
-      return MOCK_SQL_TEMPLATES[dialect] || MOCK_SQL_TEMPLATES['postgresql'];
-    }
+    await delay(900 + Math.random() * 600);
+    return MOCK_SQL_TEMPLATES[dialect] || MOCK_SQL_TEMPLATES['postgresql'];
+    /* реальный вызов:
     const res = await fetch(`${API_BASE}/generate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${auth.getToken()}` },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt, dialect }),
     });
     if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
     return data.sql;
+    */
   },
 
   async executeSQL(sql, dialect) {
-    if (MOCK) {
-      await delay(600 + Math.random() * 400);
-      if (Math.random() < 0.1) throw new Error('connection refused: database unreachable');
-      return MOCK_RESULTS;
-    }
+    await delay(600 + Math.random() * 400);
+    if (Math.random() < 0.1) throw new Error('connection refused: database unreachable');
+    return MOCK_RESULTS;
+    /* реальный вызов:
     const res = await fetch(`${API_BASE}/execute`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${auth.getToken()}` },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sql, dialect }),
     });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
+    */
   },
 
   async connectDB(config) {
-    if (MOCK) {
-      await delay(1200);
-      return { success: true, tables: MOCK_DB_TABLES };
-    }
+    await delay(1200);
+    return { success: true, tables: MOCK_DB_TABLES };
+    /* реальный вызов:
     const res = await fetch(`${API_BASE}/db/connect`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${auth.getToken()}` },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(config),
     });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
+    */
   },
 
-async login(email, password) {
+  async login(email, password) {
     const res = await fetch(`/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
+      credentials: 'include',
     });
     if (!res.ok) {
-      const status = res.status;
-      if (status === 400) throw { type: 'error', msg: 'Неверный email или пароль' };
-      if (status === 500) throw { type: 'error', msg: 'Ошибка сервера. Попробуйте позже' };
-      throw { type: 'error', msg: 'Неизвестная ошибка' };
+      const data = await res.json().catch(() => ({}));
+      const detail = typeof data.detail === 'string' ? data.detail.toLowerCase() : '';
+      // Переводим сообщения бэкенда в читаемый вид
+      if (res.status === 401 || detail.includes('incorrect') || detail.includes('password') || detail.includes('email')) {
+        throw { msg: 'Неверный email или пароль' };
+      }
+      if (res.status === 403 || detail.includes('forbidden') || detail.includes('banned')) {
+        throw { msg: 'Доступ запрещён' };
+      }
+      if (res.status === 404 || detail.includes('not found') || detail.includes('user')) {
+        throw { msg: 'Пользователь с таким email не найден' };
+      }
+      if (res.status >= 500) {
+        throw { msg: 'Ошибка сервера. Попробуйте позже' };
+      }
+      // Показываем оригинальное сообщение если оно есть
+      throw { msg: data.detail || 'Неизвестная ошибка' };
     }
     const data = await res.json();
-    return { token: data.jwt_token, user: { id: data.id, name: data.name, email: data.email, plan: data.plan } };
+    return { user: { id: data.id, name: data.name, email: data.email, plan: data.plan } };
   },
 
   async register(name, email, password) {
@@ -168,52 +233,31 @@ async login(email, password) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, password }),
+      credentials: 'include',
     });
     if (!res.ok) {
-      const status = res.status;
-      if (status === 401) throw { type: 'error', msg: 'Неверный email или пароль' };
-      if (status === 403) throw { type: 'error', msg: 'Доступ запрещён' };
-      if (status === 500) throw { type: 'error', msg: 'Ошибка сервера. Попробуйте позже' };
-      throw { type: 'error', msg: 'Неизвестная ошибка' };
+      const data = await res.json().catch(() => ({}));
+      const detail = typeof data.detail === 'string' ? data.detail.toLowerCase() : '';
+      // Переводим сообщения бэкенда в читаемый вид
+      if (detail.includes('already') || detail.includes('exist') || detail.includes('duplicate') || detail.includes('unique')) {
+        throw { msg: 'Этот email уже зарегистрирован' };
+      }
+      if (detail.includes('email') && detail.includes('invalid')) {
+        throw { msg: 'Некорректный формат email' };
+      }
+      if (detail.includes('password')) {
+        throw { msg: 'Пароль не соответствует требованиям' };
+      }
+      if (res.status === 400) {
+        throw { msg: data.detail || 'Регистрация не удалась. Проверьте введённые данные' };
+      }
+      if (res.status >= 500) {
+        throw { msg: 'Ошибка сервера. Попробуйте позже' };
+      }
+      throw { msg: data.detail || 'Неизвестная ошибка' };
     }
     const data = await res.json();
-    return { token: data.jwt_token, user: { id: data.id, name: data.name, email: data.email, plan: data.plan } };
-  },
-};
-
-/* ── AUTH MODULE ────────────────────────────────────────── */
-const auth = {
-  getToken() { return localStorage.getItem('sqlcraft_token'); },
-  getUser()  {
-    try { return JSON.parse(localStorage.getItem('sqlcraft_user') || 'null'); }
-    catch { return null; }
-  },
-  setSession(token, user) {
-    localStorage.setItem('sqlcraft_token', token);
-    localStorage.setItem('sqlcraft_user', JSON.stringify(user));
-  },
-  logout() {
-    localStorage.removeItem('sqlcraft_token');
-    localStorage.removeItem('sqlcraft_user');
-    window.location.href = 'index.html';
-  },
-  // Проверяем exp прямо из JWT payload — без запроса к серверу
-  isLoggedIn() {
-    const token = this.getToken();
-    if (!token) return false;
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      return payload.exp * 1000 > Date.now();
-    } catch {
-      return false;
-    }
-  },
-  requireAuth() {
-    if (!this.isLoggedIn()) {
-      this.logout(); // чистим протухшие данные
-      return false;
-    }
-    return true;
+    return { user: { id: data.id, name: data.name, email: data.email, plan: data.plan } };
   },
 };
 
@@ -268,7 +312,7 @@ const exportUtils = {
   },
 };
 
-/* ── SQL HIGHLIGHTER (simple) ───────────────────────────── */
+/* ── SQL HIGHLIGHTER ────────────────────────────────────── */
 function highlightSQL(sql) {
   const keywords = ['SELECT','FROM','WHERE','JOIN','LEFT','RIGHT','INNER','OUTER',
     'ON','GROUP','BY','ORDER','HAVING','LIMIT','OFFSET','INSERT','UPDATE','DELETE',
@@ -277,14 +321,10 @@ function highlightSQL(sql) {
     'THEN','ELSE','END','WITH','UNION','ALL','INTERVAL','DATE_SUB','NOW','datetime'];
   let out = sql
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  // strings
   out = out.replace(/'[^']*'/g, m => `<span class="sql-str">${m}</span>`);
-  // comments
   out = out.replace(/(--[^\n]*)/g, `<span class="sql-cmt">$1</span>`);
-  // keywords
   const kwRe = new RegExp(`\\b(${keywords.join('|')})\\b`, 'g');
   out = out.replace(kwRe, `<span class="sql-kw">$1</span>`);
-  // numbers
   out = out.replace(/\b(\d+)\b/g, `<span class="sql-num">$1</span>`);
   return out;
 }
@@ -304,29 +344,42 @@ function initWorkshop() {
   let executeEnabled = false;
 
   // Multi-DB state
-  const connectedDBs = [];   // [{ id, name, host, tables, active }]
+  const connectedDBs = [];
   let activeDBId = null;
 
   function hasActiveDB() { return activeDBId !== null; }
-  function getActiveDB() { return connectedDBs.find(d => d.id === activeDBId) || null; }
 
   // Dialect
   const dialectBtn  = document.getElementById('dialect-btn');
   const dialectDrop = document.getElementById('dialect-dropdown');
   const dialect = dialectBtn && dialectDrop ? new DialectSelector(dialectBtn, dialectDrop) : null;
 
+  // Execute section elements — объявляем ДО использования
+  const executeToggle  = document.getElementById('execute-toggle');
+  const resultsSection = document.getElementById('results-section');
+  const executeSection = document.getElementById('execute-section');
+  const execBtn        = document.getElementById('exec-sql-btn');
+
+  function syncExecBtn() {
+    if (!execBtn) return;
+    const show = executeEnabled && currentSQL.length > 0;
+    execBtn.style.display = show ? 'inline-flex' : 'none';
+  }
+
   // History
   renderHistory();
 
+  // Logout
+  document.getElementById('logout-btn')?.addEventListener('click', () => {
+    auth.logout();
+  });
+
   // DB Connect btn
-  const dbConnectBtn = document.getElementById('db-connect-btn');
-  if (dbConnectBtn) {
-    dbConnectBtn.addEventListener('click', () => openDBModal());
-  }
+  document.getElementById('db-connect-btn')?.addEventListener('click', () => openDBModal());
 
   // Generate
-  const generateBtn = document.getElementById('generate-btn');
-  const promptTextarea = document.getElementById('prompt-textarea');
+  const generateBtn     = document.getElementById('generate-btn');
+  const promptTextarea  = document.getElementById('prompt-textarea');
   if (generateBtn && promptTextarea) {
     generateBtn.addEventListener('click', handleGenerate);
     promptTextarea.addEventListener('keydown', (e) => {
@@ -337,7 +390,6 @@ function initWorkshop() {
   async function handleGenerate() {
     const prompt = promptTextarea.value.trim();
     if (!prompt) { showToast('Введите запрос', 'error'); return; }
-
     setGenerating(true);
     try {
       const sql = await api.generateSQL(prompt, dialect ? dialect.value : 'postgresql');
@@ -345,11 +397,7 @@ function initWorkshop() {
       renderSQL(sql);
       addHistoryItem(prompt);
       showToast('SQL сгенерирован', 'success');
-
-      // Auto-execute if enabled
-      if (executeEnabled && hasActiveDB()) {
-        await handleExecute();
-      }
+      if (executeEnabled && hasActiveDB()) await handleExecute();
     } catch (err) {
       showToast(`Ошибка: ${err.message}`, 'error');
     } finally {
@@ -377,7 +425,7 @@ function initWorkshop() {
   }
 
   // Execute manually
-
+  if (execBtn) execBtn.addEventListener('click', handleExecute);
 
   // Copy SQL
   const copyBtn = document.getElementById('copy-sql-btn');
@@ -387,24 +435,10 @@ function initWorkshop() {
   });
 
   // Execute toggle
-  const executeToggle = document.getElementById('execute-toggle');
-  const resultsSection = document.getElementById('results-section');
-  const executeSection = document.getElementById('execute-section');
-  const execBtn = document.getElementById('exec-sql-btn');  
-  if (execBtn) execBtn.addEventListener('click', handleExecute);
-  function syncExecBtn() {
-    if (!execBtn) return;
-    // кнопка «Выполнить» видна только когда: есть SQL + галочка включена
-    const show = executeEnabled && currentSQL.length > 0;
-    execBtn.style.display = show ? 'inline-flex' : 'none';
-  }
-
   if (executeToggle) {
     executeToggle.addEventListener('change', () => {
       executeEnabled = executeToggle.checked;
-      if (resultsSection) {
-        resultsSection.style.display = executeEnabled ? 'block' : 'none';
-      }
+      if (resultsSection) resultsSection.style.display = executeEnabled ? 'block' : 'none';
       syncExecBtn();
     });
   }
@@ -412,7 +446,6 @@ function initWorkshop() {
   async function handleExecute() {
     if (!currentSQL) { showToast('Сначала сгенерируйте SQL', 'error'); return; }
     if (!hasActiveDB()) { showToast('Подключите базу данных', 'error'); return; }
-
     if (execBtn) { execBtn.disabled = true; execBtn.textContent = '▶ Выполнение...'; }
     try {
       const results = await api.executeSQL(currentSQL, dialect ? dialect.value : 'postgresql');
@@ -431,7 +464,6 @@ function initWorkshop() {
     const thead = document.getElementById('results-thead');
     const footer = document.getElementById('results-footer-info');
     if (!tbody || !thead) return;
-
     thead.innerHTML = results.columns.map(c => `<th>${c}</th>`).join('');
     tbody.innerHTML = results.rows.map(row =>
       `<tr>${row.map(v => `<td class="${v === null ? 'null-val' : ''}">${v === null ? 'NULL' : v}</td>`).join('')}</tr>`
@@ -484,9 +516,6 @@ function initWorkshop() {
   window.closeDBModal = function() {
     if (dbModal) dbModal.classList.remove('open');
   };
-  dbModal?.querySelector('.modal-overlay')?.addEventListener('click', (e) => {
-    if (e.target === e.currentTarget) closeDBModal();
-  });
 
   const dbConnectSubmitBtn = document.getElementById('db-connect-submit');
   if (dbConnectSubmitBtn) {
@@ -504,18 +533,12 @@ function initWorkshop() {
           password: document.getElementById('db-pass')?.value || '',
         };
         const result = await api.connectDB(config);
-
-        // Add to list
         const id = Date.now();
         connectedDBs.push({ id, name: dbName, host, tables: result.tables });
-        // Set active to this new one
         activeDBId = id;
-
         renderDBList();
         closeDBModal();
         showToast(`БД «${dbName}» подключена!`, 'success');
-
-        // Show execute section now that we have at least one DB
         if (executeSection) executeSection.style.display = 'block';
       } catch (err) {
         showToast(`Ошибка подключения: ${err.message}`, 'error');
@@ -529,12 +552,10 @@ function initWorkshop() {
   function renderDBList() {
     const list = document.getElementById('db-list');
     if (!list) return;
-
     if (connectedDBs.length === 0) {
       list.innerHTML = `<div style="font-size:12px; font-family:var(--font-mono); color:var(--text-dim); padding: 6px 2px;">Нет подключений</div>`;
       return;
     }
-
     list.innerHTML = connectedDBs.map(db => `
       <div class="db-entry ${db.id === activeDBId ? 'db-entry-active' : ''}"
            onclick="selectDB(${db.id})"
@@ -577,13 +598,10 @@ function initWorkshop() {
     if (idx === -1) return;
     const name = connectedDBs[idx].name;
     connectedDBs.splice(idx, 1);
-
     if (activeDBId === id) {
       activeDBId = connectedDBs.length > 0 ? connectedDBs[connectedDBs.length - 1].id : null;
     }
     renderDBList();
-
-    // Hide execute section if no DBs left
     if (connectedDBs.length === 0 && executeSection) {
       executeSection.style.display = 'none';
       if (executeToggle) executeToggle.checked = false;
@@ -593,11 +611,6 @@ function initWorkshop() {
     }
     showToast(`БД «${name}» отключена`, 'info');
   };
-
-  // Logout
-  document.getElementById('logout-btn')?.addEventListener('click', () => {
-    auth.logout();
-  });
 }
 
 /* ── AUTH PAGE INIT ─────────────────────────────────────── */
@@ -617,20 +630,40 @@ function initAuth() {
     });
   });
 
+  function showAlert(form, msg) {
+    const id = form === 'login' ? 'alert-login' : 'alert-register';
+    let el = document.getElementById(id);
+    if (!el) {
+      el = document.createElement('div');
+      el.id = id;
+      el.className = 'auth-alert';
+      const btn = document.getElementById(form === 'login' ? 'login-btn' : 'register-btn');
+      btn?.parentNode.insertBefore(el, btn);
+    }
+    el.textContent = msg;
+    el.style.display = 'flex';
+  }
+
+  function clearAlert(form) {
+    const id = form === 'login' ? 'alert-login' : 'alert-register';
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  }
+
   // Login
   document.getElementById('login-btn')?.addEventListener('click', async () => {
     const email = document.getElementById('login-email')?.value?.trim();
     const pass  = document.getElementById('login-pass')?.value;
     if (!email || !pass) return showAlert('login', 'Заполните все поля');
+    clearAlert('login');
     const btn = document.getElementById('login-btn');
     btn.disabled = true; btn.textContent = 'Вход...';
-    clearAlert('login');
     try {
-      const { token, user } = await api.login(email, pass);
-      auth.setSession(token, user);
+      const { user } = await api.login(email, pass);
+      auth.setSession(user);
       window.location.href = 'workshop.html';
     } catch (err) {
-      showAlert('login', err.msg || 'Неизвестная ошибка');
+      showAlert('login', err.msg || err.message || 'Неизвестная ошибка');
     } finally {
       btn.disabled = false; btn.textContent = 'Войти';
     }
@@ -643,24 +676,32 @@ function initAuth() {
     const pass  = document.getElementById('reg-pass')?.value;
     if (!name || !email || !pass) return showAlert('register', 'Заполните все поля');
     if (pass.length < 8) return showAlert('register', 'Пароль должен быть минимум 8 символов');
+    clearAlert('register');
     const btn = document.getElementById('register-btn');
     btn.disabled = true; btn.textContent = 'Регистрация...';
-    clearAlert('register');
     try {
-      const { token, user } = await api.register(name, email, pass);
-      auth.setSession(token, user);
+      const { user } = await api.register(name, email, pass);
+      auth.setSession(user);
       window.location.href = 'workshop.html';
     } catch (err) {
-      showAlert('register', err.msg || 'Неизвестная ошибка');
+      showAlert('register', err.msg || err.message || 'Неизвестная ошибка');
     } finally {
       btn.disabled = false; btn.textContent = 'Создать аккаунт';
     }
-});
+  });
 }
 
 /* ── INDEX PAGE INIT ────────────────────────────────────── */
 function initIndex() {
   if (!document.getElementById('index-page')) return;
+
+  // Показываем auth_error если был редирект с middleware
+  const authError = sessionStorage.getItem('auth_error');
+  if (authError) {
+    sessionStorage.removeItem('auth_error');
+    setTimeout(() => showToast(authError, 'error'), 200);
+  }
+
   // Typing effect in hero
   const cursor = document.getElementById('hero-cursor');
   if (cursor) {
@@ -699,23 +740,3 @@ document.addEventListener('DOMContentLoaded', () => {
   initAuth();
   initWorkshop();
 });
-
-function showAlert(form, msg) {
-    const id = form === 'login' ? 'alert-login' : 'alert-register';
-    let el = document.getElementById(id);
-    if (!el) {
-      el = document.createElement('div');
-      el.id = id;
-      el.className = 'auth-alert';
-      const btn = document.getElementById(form === 'login' ? 'login-btn' : 'register-btn');
-      btn?.parentNode.insertBefore(el, btn);
-    }
-    el.textContent = msg;
-    el.style.display = 'flex';
-  }
-
-  function clearAlert(form) {
-    const id = form === 'login' ? 'alert-login' : 'alert-register';
-    const el = document.getElementById(id);
-    if (el) el.style.display = 'none';
-  }
