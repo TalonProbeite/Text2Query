@@ -4,3 +4,4 @@ class InvalidPassword(Exception): pass
 class JWTTokenGenerateError(Exception): pass
 class JWTTokenDecodeError(Exception): pass
 class UserBannedError(Exception): pass
+class NotSqlPromt(Exception):pass
