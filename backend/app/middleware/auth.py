@@ -17,7 +17,8 @@ PUBLIC_ROUTES = {
     "/redoc",
     "/index.html",       
     "/css/style.css", 
-    "/js/main.js",
+    "/js/pages.js",
+    "/js/core.js"
 }
 
 
