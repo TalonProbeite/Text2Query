@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     public_key : str = (BASE_DIR / "certs" / "public.pem").read_text().strip()
     algorithm: str = "RS256"
 
+    llm_api_key:str
+
     model_config = SettingsConfigDict(
     env_file=BASE_DIR / ".env",
     extra="ignore"
