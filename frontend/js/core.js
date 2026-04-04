@@ -150,18 +150,22 @@ const auth = {
 /* ── API LAYER ──────────────────────────────────────────── */
 const api = {
   async generateSQL(prompt, dialect) {
-    await delay(900 + Math.random() * 600);
-    return MOCK_SQL_TEMPLATES[dialect] || MOCK_SQL_TEMPLATES['postgresql'];
-    /* реальный вызов:
-    const res = await fetch(`${API_BASE}/generate`, {
+    const res = await fetch(`/sql/get_sql`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, dialect }),
+      credentials: 'include',
+      body: JSON.stringify({ prompt, sql_type: dialect }),
     });
-    if (!res.ok) throw new Error(await res.text());
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 400) throw { msg: 'Запрос не связан с SQL — попробуйте переформулировать' };
+      if (res.status === 502) throw { msg: 'Сервис генерации недоступен, попробуйте позже' };
+      throw { msg: data.detail || 'Неизвестная ошибка' };
+    }
+
     const data = await res.json();
-    return data.sql;
-    */
+    return { query: data.query, is_danger: data.is_danger };
   },
 
   async executeSQL(sql, dialect) {

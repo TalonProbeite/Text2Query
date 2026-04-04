@@ -4,7 +4,7 @@ from pydantic import BaseModel  , Field
 
 
 class SqlResponse(BaseModel):
-        query:str = Field(... , min_length=10 , max_length=300)
+        query:str = Field(... , min_length=10 , max_length=800)
         is_danger:bool
 
 

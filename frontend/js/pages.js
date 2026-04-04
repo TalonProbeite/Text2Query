@@ -189,14 +189,18 @@ function initWorkshop() {
     if (!prompt) { showToast('Введите запрос', 'error'); return; }
     setGenerating(true);
     try {
-      const sql = await api.generateSQL(prompt, dialect ? dialect.value : 'postgresql');
-      currentSQL = sql;
-      renderSQL(sql);
+      const { query, is_danger } = await api.generateSQL(prompt, dialect ? dialect.value : 'postgresql');
+      currentSQL = query;
+      renderSQL(query, is_danger);
       addHistoryItem(prompt);
-      showToast('SQL сгенерирован', 'success');
+      if (is_danger) {
+        showToast('⚠️ Запрос может изменить или удалить данные — проверьте перед выполнением', 'error');
+      } else {
+        showToast('SQL сгенерирован', 'success');
+      }
       if (executeEnabled && hasActiveDB()) await handleExecute();
     } catch (err) {
-      showToast(`Ошибка: ${err.message}`, 'error');
+      showToast(err.msg || err.message || 'Неизвестная ошибка', 'error');
     } finally {
       setGenerating(false);
     }
@@ -214,10 +218,12 @@ function initWorkshop() {
     }
   }
 
-  function renderSQL(sql) {
+  function renderSQL(sql, is_danger = false) {
     const body = document.getElementById('sql-output-body');
+    const badge = document.getElementById('danger-badge');
     if (!body) return;
     body.innerHTML = highlightSQL(sql);
+    if (badge) badge.style.display = is_danger ? 'inline-flex' : 'none';
     syncExecBtn();
   }
 
