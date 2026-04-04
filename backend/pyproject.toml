@@ -14,4 +14,5 @@ dependencies = [
     "pyjwt[crypto]>=2.12.1",
     "sqlalchemy>=2.0.48",
     "uvicorn>=0.42.0",
+    "openai>=2.30.0",
 ]
