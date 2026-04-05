@@ -18,7 +18,8 @@ class User(Base):
     api_key  = Column(String(200), nullable=True,default=None, unique=True)
     is_verified = Column(Boolean,default=False)
     verification_token = Column(String(100), default=None)
-
+    
+    history = relationship("QueryHistory", back_populates="user")
     databases = relationship("Database", back_populates="user")
     
     def __repr__(self):

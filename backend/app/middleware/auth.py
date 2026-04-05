@@ -35,7 +35,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         try:
             payload = decode_jwt(token)
-            request.state.user_id = payload.get("sub")
+            request.state.user_id = int(payload.get("sub"))
             request.state.email = payload.get("email")
             return await call_next(request)
             

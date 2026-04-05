@@ -12,6 +12,7 @@ from app.models import ___init__
 from app.middleware.auth import AuthMiddleware
 from app.middleware.logging import LoggingMiddleware
 from app.route.sql_routes import router as sql_router
+from app.route.history_routes import router as history_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -29,7 +30,7 @@ app = FastAPI(
 
 app.include_router(auth_router)
 app.include_router(sql_router)
-
+app.include_router(history_router)
 
 app.add_middleware(LoggingMiddleware)
 app.add_middleware(AuthMiddleware)

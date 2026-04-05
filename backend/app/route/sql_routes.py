@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException , Response
+from fastapi import APIRouter, Depends, HTTPException , Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
 
@@ -8,13 +8,14 @@ from app.core.config import settings
 from app.schemas.sql import SqlResponse , UserPrompt
 from app.core.exceptions import NotSqlPromt
 from app.core.dependencies import get_llm_service
+from app.repositories.history_repo import QueryHistoryRepository
 
 router = APIRouter(prefix="/sql", tags=["SQL"])
 
 
 @router.post(path="/get_sql")
 async def get_sql(user_data: UserPrompt , 
-                  response:Response, 
+                  request:Request, 
                   llm: LlmService = Depends(get_llm_service),
                   db:AsyncSession = Depends(get_db)):
     try:
@@ -22,8 +23,9 @@ async def get_sql(user_data: UserPrompt ,
         
         is_danger =  llm.is_dangerous(resp)
         if is_danger:
-            resp.replace("danger", "")
-
+            resp = resp.replace("danger", "")
+        repo = QueryHistoryRepository(db)
+        await repo.add_query(request.state.user_id ,user_data.prompt, resp,is_danger, user_data.sql_type)
         return SqlResponse(query=resp , is_danger=is_danger)
     except NotSqlPromt as e:
         logger.info(f"The user entered a promt not related to sql:{e}")
