@@ -8,14 +8,12 @@
 function initIndex() {
   if (!document.getElementById('index-page')) return;
 
-  // Показываем auth_error если был редирект с middleware
   const authError = sessionStorage.getItem('auth_error');
   if (authError) {
     sessionStorage.removeItem('auth_error');
     setTimeout(() => showToast(authError, 'error'), 200);
   }
 
-  // Typing effect in hero
   const cursor = document.getElementById('hero-cursor');
   if (cursor) {
     const texts = [
@@ -41,7 +39,6 @@ function initIndex() {
     }
   }
 
-  // CTA buttons redirect
   document.querySelectorAll('[data-goto]').forEach(el => {
     el.addEventListener('click', () => window.location.href = el.dataset.goto);
   });
@@ -52,7 +49,6 @@ function initAuth() {
   if (!document.getElementById('auth-page')) return;
   if (auth.isLoggedIn()) { window.location.href = 'workshop.html'; return; }
 
-  // Tabs
   const tabs = document.querySelectorAll('.auth-tab');
   const panels = document.querySelectorAll('.auth-form-panel');
   tabs.forEach(tab => {
@@ -79,12 +75,10 @@ function initAuth() {
   }
 
   function clearAlert(form) {
-    const id = form === 'login' ? 'alert-login' : 'alert-register';
-    const el = document.getElementById(id);
+    const el = document.getElementById(form === 'login' ? 'alert-login' : 'alert-register');
     if (el) el.style.display = 'none';
   }
 
-  // Login
   document.getElementById('login-btn')?.addEventListener('click', async () => {
     const email = document.getElementById('login-email')?.value?.trim();
     const pass  = document.getElementById('login-pass')?.value;
@@ -103,7 +97,6 @@ function initAuth() {
     }
   });
 
-  // Register
   document.getElementById('register-btn')?.addEventListener('click', async () => {
     const name  = document.getElementById('reg-name')?.value?.trim();
     const email = document.getElementById('reg-email')?.value?.trim();
@@ -136,14 +129,13 @@ function initWorkshop() {
   const userNameEl = document.getElementById('user-name');
   if (userNameEl && user) userNameEl.textContent = user.name || user.email;
 
-  let currentSQL = '';
-  let lastResults = null;
+  let currentSQL     = '';
+  let lastResults    = null;
   let executeEnabled = false;
 
   // Multi-DB state
   const connectedDBs = [];
   let activeDBId = null;
-
   function hasActiveDB() { return activeDBId !== null; }
 
   // Dialect
@@ -151,32 +143,92 @@ function initWorkshop() {
   const dialectDrop = document.getElementById('dialect-dropdown');
   const dialect = dialectBtn && dialectDrop ? new DialectSelector(dialectBtn, dialectDrop) : null;
 
-  // Execute section elements — объявляем ДО использования
+  // Elements
   const executeToggle  = document.getElementById('execute-toggle');
   const resultsSection = document.getElementById('results-section');
   const executeSection = document.getElementById('execute-section');
   const execBtn        = document.getElementById('exec-sql-btn');
+  const promptTextarea = document.getElementById('prompt-textarea');
+  const generateBtn    = document.getElementById('generate-btn');
 
   function syncExecBtn() {
     if (!execBtn) return;
-    const show = executeEnabled && currentSQL.length > 0;
-    execBtn.style.display = show ? 'inline-flex' : 'none';
+    execBtn.style.display = (executeEnabled && currentSQL.length > 0) ? 'inline-flex' : 'none';
   }
 
-  // History
-  renderHistory();
+  /* ── HISTORY ──────────────────────────────────────────── */
+  let history = [];
 
-  // Logout
-  document.getElementById('logout-btn')?.addEventListener('click', () => {
-    auth.logout();
-  });
+  function formatDate(isoStr) {
+    const d = new Date(isoStr);
+    return d.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  }
 
-  // DB Connect btn
+  function renderHistory() {
+    const container = document.getElementById('history-list');
+    if (!container) return;
+    if (history.length === 0) {
+      container.innerHTML = `<div style="font-size:12px; font-family:var(--font-mono); color:var(--text-dim); padding: 8px 4px;">История пуста</div>`;
+      return;
+    }
+    container.innerHTML = history.map((h, i) => `
+      <div class="history-item" data-index="${i}">
+        <div class="history-item-query">${h.prompt}</div>
+        <div class="history-item-time">${formatDate(h.created_at)}</div>
+      </div>
+    `).join('');
+
+    container.querySelectorAll('.history-item').forEach(el => {
+      el.addEventListener('click', () => selectHistory(+el.dataset.index));
+    });
+  }
+
+  function selectHistory(i) {
+    const h = history[i];
+    if (!h) return;
+
+    if (promptTextarea) promptTextarea.value = h.prompt;
+
+    if (dialect) {
+      dialect.value = h.dialect;
+      if (dialectBtn) dialectBtn.querySelector('.dialect-current').textContent = h.dialect;
+      document.querySelectorAll('.dialect-option').forEach(opt => {
+        opt.classList.toggle('active', opt.dataset.value === h.dialect);
+      });
+    }
+
+    currentSQL = h.query;
+    renderSQL(h.query, h.is_danger);
+
+    document.querySelectorAll('.history-item').forEach((el, j) =>
+      el.classList.toggle('active', j === i)
+    );
+  }
+
+  function addHistoryItem(entry) {
+    history.unshift(entry);
+    renderHistory();
+  }
+
+  async function loadHistory() {
+    try {
+      history = await api.getHistory();
+    } catch {
+      history = [];
+      showToast('Не удалось загрузить историю', 'error');
+    }
+    renderHistory();
+  }
+
+  loadHistory();
+
+  /* ── LOGOUT ───────────────────────────────────────────── */
+  document.getElementById('logout-btn')?.addEventListener('click', () => auth.logout());
+
+  /* ── DB CONNECT BTN ───────────────────────────────────── */
   document.getElementById('db-connect-btn')?.addEventListener('click', () => openDBModal());
 
-  // Generate
-  const generateBtn    = document.getElementById('generate-btn');
-  const promptTextarea = document.getElementById('prompt-textarea');
+  /* ── GENERATE ─────────────────────────────────────────── */
   if (generateBtn && promptTextarea) {
     generateBtn.addEventListener('click', handleGenerate);
     promptTextarea.addEventListener('keydown', (e) => {
@@ -192,7 +244,13 @@ function initWorkshop() {
       const { query, is_danger } = await api.generateSQL(prompt, dialect ? dialect.value : 'postgresql');
       currentSQL = query;
       renderSQL(query, is_danger);
-      addHistoryItem(prompt);
+      addHistoryItem({
+        prompt,
+        query,
+        is_danger,
+        dialect: dialect ? dialect.value : 'postgresql',
+        created_at: new Date().toISOString(),
+      });
       if (is_danger) {
         showToast('⚠️ Запрос может изменить или удалить данные — проверьте перед выполнением', 'error');
       } else {
@@ -219,7 +277,7 @@ function initWorkshop() {
   }
 
   function renderSQL(sql, is_danger = false) {
-    const body = document.getElementById('sql-output-body');
+    const body  = document.getElementById('sql-output-body');
     const badge = document.getElementById('danger-badge');
     if (!body) return;
     body.innerHTML = highlightSQL(sql);
@@ -227,17 +285,9 @@ function initWorkshop() {
     syncExecBtn();
   }
 
-  // Execute manually
+  /* ── EXECUTE ──────────────────────────────────────────── */
   if (execBtn) execBtn.addEventListener('click', handleExecute);
 
-  // Copy SQL
-  const copyBtn = document.getElementById('copy-sql-btn');
-  if (copyBtn) copyBtn.addEventListener('click', () => {
-    if (currentSQL) copyToClipboard(currentSQL);
-    else showToast('Нет SQL для копирования', 'error');
-  });
-
-  // Execute toggle
   if (executeToggle) {
     executeToggle.addEventListener('change', () => {
       executeEnabled = executeToggle.checked;
@@ -263,8 +313,8 @@ function initWorkshop() {
   }
 
   function renderResults(results) {
-    const tbody = document.getElementById('results-tbody');
-    const thead = document.getElementById('results-thead');
+    const tbody  = document.getElementById('results-tbody');
+    const thead  = document.getElementById('results-thead');
     const footer = document.getElementById('results-footer-info');
     if (!tbody || !thead) return;
     thead.innerHTML = results.columns.map(c => `<th>${c}</th>`).join('');
@@ -274,7 +324,14 @@ function initWorkshop() {
     if (footer) footer.textContent = `${results.rowCount} строк • ${results.execMs}ms`;
   }
 
-  // Export buttons
+  /* ── COPY SQL ─────────────────────────────────────────── */
+  const copyBtn = document.getElementById('copy-sql-btn');
+  if (copyBtn) copyBtn.addEventListener('click', () => {
+    if (currentSQL) copyToClipboard(currentSQL);
+    else showToast('Нет SQL для копирования', 'error');
+  });
+
+  /* ── EXPORT ───────────────────────────────────────────── */
   document.getElementById('export-csv')?.addEventListener('click', () => {
     if (!lastResults) return showToast('Нет данных для экспорта', 'error');
     exportUtils.download('results.csv', exportUtils.toCSV(lastResults), 'text/csv');
@@ -291,34 +348,10 @@ function initWorkshop() {
     showToast('SQL файл скачан', 'success');
   });
 
-  // History
-  function addHistoryItem(query) {
-    MOCK_HISTORY.unshift({ query, time: 'только что' });
-    renderHistory();
-  }
-  function renderHistory() {
-    const container = document.getElementById('history-list');
-    if (!container) return;
-    container.innerHTML = MOCK_HISTORY.map((h, i) => `
-      <div class="history-item ${i === 0 ? 'active' : ''}" onclick="selectHistory(${i})">
-        <div class="history-item-query">${h.query}</div>
-        <div class="history-item-time">${h.time}</div>
-      </div>
-    `).join('');
-  }
-  window.selectHistory = function(i) {
-    if (promptTextarea) promptTextarea.value = MOCK_HISTORY[i].query;
-    document.querySelectorAll('.history-item').forEach((el, j) => el.classList.toggle('active', j === i));
-  };
-
-  // DB Modal
+  /* ── DB MODAL ─────────────────────────────────────────── */
   const dbModal = document.getElementById('db-modal');
-  window.openDBModal = function() {
-    if (dbModal) dbModal.classList.add('open');
-  };
-  window.closeDBModal = function() {
-    if (dbModal) dbModal.classList.remove('open');
-  };
+  window.openDBModal  = () => dbModal?.classList.add('open');
+  window.closeDBModal = () => dbModal?.classList.remove('open');
 
   const dbConnectSubmitBtn = document.getElementById('db-connect-submit');
   if (dbConnectSubmitBtn) {
