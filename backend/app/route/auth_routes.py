@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException , Response
+from fastapi import APIRouter, Depends, HTTPException , Response , Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
 from datetime import datetime, timezone, timedelta
@@ -8,6 +8,8 @@ from app.db.database import get_db
 from app.repositories.users_repo import UserRepository
 from app.core.exceptions import InvalidPassword , UserNotFound ,UserBannedError , JWTTokenDecodeError , JWTTokenGenerateError, UserAlreadyExists
 from app.utils.jwt import encode_jwt
+from app.utils.jwt import decode_jwt
+
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -107,3 +109,23 @@ async def logout(response: Response):
     except Exception as e:
         logger.info(f"error on exit:{e}") 
         return {"success":False}
+    
+
+
+
+@router.get("/me")
+async def is_logged(request: Request, db: AsyncSession = Depends(get_db)):
+    user_id = getattr(request.state, "user_id", None)
+    if not user_id:
+        return {"is_logged": False}
+    
+    repo = UserRepository(db)
+    user = await repo.get_by_id(user_id)
+    if not user:
+        return {"is_logged": False}
+    
+    return {
+        "is_logged": True,
+        "name": user.name,
+        "plan": user.plan
+    }
