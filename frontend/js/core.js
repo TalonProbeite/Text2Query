@@ -97,6 +97,15 @@ const auth = {
 
 /* ── API LAYER ──────────────────────────────────────────── */
 const api = {
+  async getMe() {
+    const res = await fetch('/auth/me', {
+      method: 'GET',
+      credentials: 'include',
+    });
+    if (!res.ok) return { is_logged: false };
+    return res.json();
+  },
+
   async generateSQL(prompt, dialect) {
     const res = await fetch('/sql/get_sql', {
       method: 'POST',

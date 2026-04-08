@@ -14,6 +14,25 @@ function initIndex() {
     setTimeout(() => showToast(authError, 'error'), 200);
   }
 
+  // Navbar: проверяем авторизацию и рисуем нужный блок
+  api.getMe().then(me => {
+    const navbarAuth = document.getElementById('navbar-auth');
+    if (!navbarAuth) return;
+    if (me.is_logged) {
+      const initial = (me.name || '?')[0].toUpperCase();
+      navbarAuth.innerHTML = `
+        <a class="navbar-user-card" href="workshop.html">
+          <div class="navbar-user-avatar">${initial}</div>
+          <div class="navbar-user-info">
+            <div class="navbar-user-name">${me.name}</div>
+            <div class="navbar-user-plan">${me.plan || 'free'}</div>
+          </div>
+        </a>
+      `;
+    }
+    // если не залогинен — кнопки остаются как есть
+  }).catch(() => {});
+
   const cursor = document.getElementById('hero-cursor');
   if (cursor) {
     const texts = [

@@ -18,7 +18,7 @@ PUBLIC_ROUTES = {
     "/index.html",       
     "/css/style.css", 
     "/js/pages.js",
-    "/auth/me",
+    "/js/core.js",
 }
 
 
