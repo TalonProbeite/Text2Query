@@ -14,24 +14,29 @@ function initIndex() {
     setTimeout(() => showToast(authError, 'error'), 200);
   }
 
-  // Navbar: проверяем авторизацию и рисуем нужный блок
+  // Проверяем реальный статус сессии через сервер
   api.getMe().then(me => {
     const navbarAuth = document.getElementById('navbar-auth');
     if (!navbarAuth) return;
     if (me.is_logged) {
       const initial = (me.name || '?')[0].toUpperCase();
       navbarAuth.innerHTML = `
-        <a class="navbar-user-card" href="workshop.html">
+        <div class="navbar-user-card">
           <div class="navbar-user-avatar">${initial}</div>
           <div class="navbar-user-info">
             <div class="navbar-user-name">${me.name}</div>
             <div class="navbar-user-plan">${me.plan || 'free'}</div>
           </div>
-        </a>
+        </div>
+        <a class="btn btn-primary btn-sm" href="workshop.html">Мастерская →</a>
       `;
+    } else {
+      // Токен просрочен или невалиден — чистим localStorage
+      localStorage.removeItem('sqlcraft_user');
     }
-    // если не залогинен — кнопки остаются как есть
-  }).catch(() => {});
+  }).catch(() => {
+    localStorage.removeItem('sqlcraft_user');
+  });
 
   const cursor = document.getElementById('hero-cursor');
   if (cursor) {
@@ -66,7 +71,18 @@ function initIndex() {
 /* ── AUTH PAGE INIT ─────────────────────────────────────── */
 function initAuth() {
   if (!document.getElementById('auth-page')) return;
-  if (auth.isLoggedIn()) { window.location.href = 'workshop.html'; return; }
+
+  // Проверяем через сервер — localStorage врать может (просроченный токен)
+  api.getMe().then(me => {
+    if (me.is_logged) {
+      window.location.href = 'workshop.html';
+    } else {
+      // Токен невалиден — чистим localStorage
+      localStorage.removeItem('sqlcraft_user');
+    }
+  }).catch(() => {
+    localStorage.removeItem('sqlcraft_user');
+  });
 
   const tabs = document.querySelectorAll('.auth-tab');
   const panels = document.querySelectorAll('.auth-form-panel');
