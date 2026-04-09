@@ -11,8 +11,8 @@ DRIVERS = {
 
 class ConnectionDbService:
 
-    def __init__(self, connection_data: dict, db_type: str) -> None:
-        self.dialect = db_type
+    def __init__(self, connection_data: dict, ) -> None:
+        self.dialect = connection_data.get("db_type")
         self.connection_data = connection_data
         self.engine = None
 
