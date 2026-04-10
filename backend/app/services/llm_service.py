@@ -70,6 +70,7 @@ class LlmService:
         resp = resp.choices[0].message.content.strip()
         if resp == "не связано с sql!":
             raise NotSqlPromt()
+        resp = resp.replace("sql", "").replace("```","")
         return resp
     
 

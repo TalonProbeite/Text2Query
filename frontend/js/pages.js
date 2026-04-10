@@ -336,7 +336,8 @@ function initWorkshop() {
     if (!hasActiveDB()) { showToast('Подключите базу данных', 'error'); return; }
     if (execBtn) { execBtn.disabled = true; execBtn.textContent = '▶ Выполнение...'; }
     try {
-      const results = await api.executeSQL(currentSQL, dialect ? dialect.value : 'postgresql');
+      const activeDB = connectedDBs.find(d => d.id === activeDBId);
+      const results = await api.executeSQL(currentSQL, activeDB.config);
       lastResults = results;
       renderResults(results);
       showToast(`Получено ${results.rowCount} строк за ${results.execMs}ms`, 'success');
@@ -394,18 +395,20 @@ function initWorkshop() {
       dbConnectSubmitBtn.disabled = true;
       dbConnectSubmitBtn.textContent = 'Подключение...';
       try {
-        const dbName = document.getElementById('db-name')?.value || 'mydb';
-        const host   = document.getElementById('db-host')?.value || 'localhost';
+        const dbName  = document.getElementById('db-name')?.value?.trim() || 'mydb';
+        const host    = document.getElementById('db-host')?.value?.trim() || 'localhost';
+        const db_type = document.getElementById('db-type')?.value || 'postgresql';
         const config = {
           host,
           port:     document.getElementById('db-port')?.value || '5432',
-          dbname:   dbName,
-          user:     document.getElementById('db-user')?.value || 'postgres',
+          db_name:  dbName,
+          username: document.getElementById('db-user')?.value?.trim() || '',
           password: document.getElementById('db-pass')?.value || '',
+          db_type,
         };
-        const result = await api.connectDB(config);
+        await api.connectDB(config);
         const id = Date.now();
-        connectedDBs.push({ id, name: dbName, host, tables: result.tables });
+        connectedDBs.push({ id, name: dbName, host, config });
         activeDBId = id;
         renderDBList();
         closeDBModal();
@@ -438,23 +441,16 @@ function initWorkshop() {
            ">
         <div style="display:flex; align-items:center; gap:8px; padding: 8px 10px;">
           <span class="status-dot online" style="width:6px;height:6px; flex-shrink:0;"></span>
-          <span style="font-size:12px; font-family:var(--font-mono); font-weight:700; color:var(--text); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${db.name}</span>
+          <div style="flex:1; overflow:hidden;">
+            <div style="font-size:12px; font-family:var(--font-mono); font-weight:700; color:var(--text); text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${db.name}</div>
+            <div style="font-size:10px; font-family:var(--font-mono); color:var(--text-dim);">${db.config.db_type} · ${db.host}</div>
+          </div>
           <button onclick="event.stopPropagation(); disconnectDB(${db.id})"
             style="background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:13px; padding:0 2px; line-height:1; transition:color 0.15s;"
             title="Отключить"
             onmouseover="this.style.color='#ff6b6b'"
             onmouseout="this.style.color='var(--text-dim)'">✕</button>
         </div>
-        ${db.id === activeDBId ? `
-        <div class="db-tables" style="padding: 0 10px 8px;">
-          ${db.tables.map(t => `
-            <div class="db-table-item">
-              <span class="table-icon">⊞</span>
-              <span>${t.name}</span>
-              <span class="row-count">${t.rows}</span>
-            </div>
-          `).join('')}
-        </div>` : ''}
       </div>
     `).join('');
   }

@@ -114,7 +114,7 @@
         </div>
         <div class="workshop-header-right">
           <span class="badge badge-green" style="font-size: 11px;">
-            <span class="status-dot online" style="width:6px;height:6px;"></span> MOCK MODE
+            <span class="status-dot online" style="width:6px;height:6px;"></span> LIVE MODE
           </span>
         </div>
       </div>
@@ -257,9 +257,8 @@
         <label class="input-label">Тип БД</label>
         <select class="select" id="db-type">
           <option value="postgresql">PostgreSQL</option>
-          <option value="mysql">MySQL / MariaDB</option>
-          <option value="sqlite">SQLite</option>
-          <option value="mssql">MS SQL Server</option>
+          <option value="mysql">MySQL</option>
+          <option value="mariadb">MariaDB</option>
         </select>
       </div>
 
@@ -295,9 +294,6 @@
         <button class="btn btn-primary" style="flex: 1; justify-content: center;" id="db-connect-submit">Подключить</button>
       </div>
 
-      <p style="font-size: 11px; font-family: var(--font-mono); color: var(--text-dim); text-align: center;">
-        В MOCK режиме подключение всегда успешно
-      </p>
     </div>
   </div>
 </div>

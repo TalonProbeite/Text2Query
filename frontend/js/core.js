@@ -8,27 +8,7 @@
 const API_BASE = '/api/v1';
 
 /* ── MOCK DATA ──────────────────────────────────────────── */
-const MOCK_RESULTS = {
-  columns: ['id', 'name', 'email', 'total_orders', 'revenue'],
-  rows: [
-    [1,  'Alice Johnson',  'alice@example.com',   24, '$4,320.00'],
-    [2,  'Bob Smith',      'bob@example.com',     18, '$2,890.50'],
-    [3,  'Carol White',    'carol@example.com',   31, '$6,100.00'],
-    [4,  'David Brown',    'david@example.com',    7,  '$890.25'],
-    [5,  'Eva Martinez',   'eva@example.com',     12, '$1,540.00'],
-    [6,  'Frank Wilson',   'frank@example.com',   null, null],
-  ],
-  rowCount: 6,
-  execMs: 34,
-};
 
-const MOCK_DB_TABLES = [
-  { name: 'users',    rows: '12,483' },
-  { name: 'orders',   rows: '89,210' },
-  { name: 'products', rows: '3,541'  },
-  { name: 'sessions', rows: '204,7k' },
-  { name: 'payments', rows: '67,891' },
-];
 
 /* ── UTILS ──────────────────────────────────────────────── */
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -123,10 +103,35 @@ const api = {
     return { query: data.query, is_danger: data.is_danger };
   },
 
-  async executeSQL(sql, dialect) {
-    await delay(600 + Math.random() * 400);
-    if (Math.random() < 0.1) throw new Error('connection refused: database unreachable');
-    return MOCK_RESULTS;
+  async executeSQL(sql, dbConfig) {
+    const res = await fetch('/user_db/execute_query', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        host:     dbConfig.host,
+        port:     parseInt(dbConfig.port),
+        db_name:  dbConfig.db_name,
+        username: dbConfig.username,
+        password: dbConfig.password,
+        db_type:  dbConfig.db_type,
+        query:    sql,
+      }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 400) throw { msg: data.detail || 'Ошибка подключения или выполнения запроса' };
+      throw { msg: 'Ошибка сервера при выполнении запроса' };
+    }
+    const rows = await res.json(); // list[dict]
+    if (!rows.length) return { columns: [], rows: [], rowCount: 0, execMs: 0 };
+    const columns = Object.keys(rows[0]);
+    return {
+      columns,
+      rows: rows.map(r => columns.map(c => r[c] ?? null)),
+      rowCount: rows.length,
+      execMs: 0,
+    };
   },
 
   async getHistory() {
@@ -139,8 +144,25 @@ const api = {
   },
 
   async connectDB(config) {
-    await delay(1200);
-    return { success: true, tables: MOCK_DB_TABLES };
+    const res = await fetch('/user_db/try_connect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        host:     config.host,
+        port:     parseInt(config.port),
+        db_name:  config.db_name,
+        username: config.username,
+        password: config.password,
+        db_type:  config.db_type,
+      }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 400) throw new Error(data.detail || 'Не удалось подключиться к БД');
+      throw new Error('Ошибка сервера при подключении');
+    }
+    return await res.json(); // {success: true}
   },
 
   async login(email, password) {

@@ -5,6 +5,34 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SQLCraft — SQL из текста</title>
   <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .navbar-user-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 12px 6px 8px;
+      cursor: default;
+    }
+    .navbar-user-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      background: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: #000;
+      flex-shrink: 0;
+    }
+    .navbar-user-info { display: flex; flex-direction: column; gap: 1px; }
+    .navbar-user-name { font-size: 12px; font-weight: 600; color: var(--text); font-family: var(--font-mono); line-height: 1.2; }
+    .navbar-user-plan { font-size: 10px; color: var(--accent); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.2; }
+  </style>
 </head>
 <body id="index-page">
 
@@ -17,8 +45,10 @@
   <div class="navbar-links">
     <a class="navbar-link" href="#features">Возможности</a>
     <a class="navbar-link" href="#how-it-works">Как работает</a>
-    <a class="btn btn-secondary btn-sm" href="auth.html">Войти</a>
-    <a class="btn btn-primary btn-sm" href="auth.html">Начать бесплатно</a>
+    <div id="navbar-auth" style="display:flex;align-items:center;gap:10px;">
+      <a class="btn btn-secondary btn-sm" href="auth.html">Войти</a>
+      <a class="btn btn-primary btn-sm" href="auth.html">Начать бесплатно</a>
+    </div>
   </div>
 </nav>
 
