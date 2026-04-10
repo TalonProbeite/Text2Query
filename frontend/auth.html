@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SQLCraft — Вход / Регистрация</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="icon" type="image/png" href="image/fav.png">
+</head>
+<body id="auth-page">
+
+<!-- ── NAVBAR ─────────────────────────────────────────── -->
+<nav class="navbar">
+  <a class="navbar-logo" href="index.html">
+    <div class="navbar-logo-icon">⚡</div>
+    SQL<span>Craft</span>
+  </a>
+  <div class="navbar-links">
+    <a class="navbar-link" href="index.html">← На главную</a>
+  </div>
+</nav>
+
+<main class="page-content">
+  <div class="auth-layout">
+    <div class="auth-glow-left"></div>
+    <div class="auth-glow-right"></div>
+
+    <div class="auth-box fade-up">
+
+      <div class="auth-logo">
+        <div class="auth-logo-mark">⚡</div>
+        <div class="auth-logo-text">SQL<span>Craft</span></div>
+      </div>
+
+      <div class="auth-card">
+
+        <!-- tabs -->
+        <div class="auth-tabs">
+          <div class="auth-tab active" data-panel="panel-login">Войти</div>
+          <div class="auth-tab" data-panel="panel-register">Регистрация</div>
+        </div>
+
+        <!-- LOGIN -->
+        <div class="auth-form-panel active" id="panel-login">
+          <p class="auth-subtitle">Добро пожаловать обратно</p>
+
+          <div class="input-group">
+            <label class="input-label" for="login-email">Email</label>
+            <input class="input" id="login-email" type="email" placeholder="you@example.com" autocomplete="email" />
+          </div>
+
+          <div class="input-group">
+            <label class="input-label" for="login-pass">Пароль</label>
+            <input class="input" id="login-pass" type="password" placeholder="••••••••" autocomplete="current-password" />
+          </div>
+
+          <div style="text-align: right; margin-top: -8px;">
+            <a href="#" style="font-size: 12px; font-family: var(--font-mono); color: var(--text-muted);">Забыли пароль?</a>
+          </div>
+
+          <button class="btn btn-primary" id="login-btn" style="width: 100%; justify-content: center; padding: 12px;">
+            Войти
+          </button>
+
+          <div class="divider-text">или</div>
+
+          <button class="btn btn-secondary" style="width: 100%; justify-content: center; opacity: 0.5; cursor: not-allowed;" disabled>
+            <span>🔑</span> Войти через GitHub (скоро)
+          </button>
+        </div>
+
+        <!-- REGISTER -->
+        <div class="auth-form-panel" id="panel-register">
+          <p class="auth-subtitle">Создайте аккаунт бесплатно</p>
+
+          <div class="input-group">
+            <label class="input-label" for="reg-name">Имя</label>
+            <input class="input" id="reg-name" type="text" placeholder="Иван Иванов" autocomplete="name" />
+          </div>
+
+          <div class="input-group">
+            <label class="input-label" for="reg-email">Email</label>
+            <input class="input" id="reg-email" type="email" placeholder="you@example.com" autocomplete="email" />
+          </div>
+
+          <div class="input-group">
+            <label class="input-label" for="reg-pass">Пароль</label>
+            <input class="input" id="reg-pass" type="password" placeholder="Минимум 8 символов" autocomplete="new-password" />
+            <span class="input-hint">Минимум 8 символов</span>
+          </div>
+
+          <button class="btn btn-primary" id="register-btn" style="width: 100%; justify-content: center; padding: 12px;">
+            Создать аккаунт
+          </button>
+
+          <p class="auth-footer-note">
+            Регистрируясь, вы соглашаетесь с <a href="#">Условиями</a> и <a href="#">Политикой конфиденциальности</a>.
+          </p>
+        </div>
+
+      </div><!-- /auth-card -->
+
+      <p style="text-align: center; margin-top: 16px; font-size: 12px; color: var(--text-dim); font-family: var(--font-mono);">
+        Demo: любой email + пароль → войти
+      </p>
+
+    </div><!-- /auth-box -->
+  </div>
+</main>
+
+<!-- ── FOOTER ─────────────────────────────────────────── -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand-name">SQL<span>Craft</span></div>
+      <p class="footer-brand-desc">Генерация SQL-запросов из текста и прямая работа с вашей базой данных.</p>
+    </div>
+    <div>
+      <div class="footer-col-title">Продукт</div>
+      <div class="footer-col-links">
+        <a href="#">Возможности</a>
+        <a href="#">Тарифы</a>
+        <a href="#">Changelog</a>
+        <a href="#">Дорожная карта</a>
+      </div>
+    </div>
+    <div>
+      <div class="footer-col-title">Разработчикам</div>
+      <div class="footer-col-links">
+        <a href="#">API Docs</a>
+        <a href="#">SDK</a>
+        <a href="#">Webhooks</a>
+        <a href="#">Status</a>
+      </div>
+    </div>
+    <div>
+      <div class="footer-col-title">Компания</div>
+      <div class="footer-col-links">
+        <a href="#">О нас</a>
+        <a href="#">Блог</a>
+        <a href="#">Поддержка</a>
+        <a href="#">GitHub</a>
+      </div>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>© 2025 SQLCraft. Все права защищены.</span>
+    <div class="footer-bottom-links">
+      <a href="#">Конфиденциальность</a>
+      <a href="#">Условия</a>
+      <a href="#">Cookies</a>
+    </div>
+  </div>
+</footer>
+
+<div id="toast-container"></div>
+<script src="js/core.js"></script>
+<script src="js/pages.js"></script>
+</body>
+</html>
