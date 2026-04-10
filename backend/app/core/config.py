@@ -23,8 +23,10 @@ class Settings(BaseSettings):
     
     static_dir: Path =  BASE_DIR / "frontend"
     
-    private_key : str = (BASE_DIR / "certs" / "private.pem").read_text().strip()
-    public_key : str = (BASE_DIR / "certs" / "public.pem").read_text().strip()
+    # private_key : str = (BASE_DIR / "certs" / "private.pem").read_text().strip()
+    # public_key : str = (BASE_DIR / "certs" / "public.pem").read_text().strip()
+    private_key: str
+    public_key: str
     algorithm: str = "RS256"
 
     llm_api_key:str
