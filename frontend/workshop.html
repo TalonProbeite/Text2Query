@@ -10,6 +10,52 @@
     body { overflow: hidden; visibility: hidden; }
     .workshop-page-wrap { display: flex; flex-direction: column; height: 100vh; }
 
+    /* User card (same as main page) */
+    .navbar-user-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 12px 6px 8px;
+      cursor: default;
+    }
+    .navbar-user-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      background: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: #000;
+      flex-shrink: 0;
+    }
+    .navbar-user-info { display: flex; flex-direction: column; gap: 1px; }
+    .navbar-user-name { font-size: 12px; font-weight: 600; color: var(--text); font-family: var(--font-mono); line-height: 1.2; }
+    .navbar-user-plan { font-size: 10px; color: var(--accent); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.2; }
+
+    /* Editable SQL textarea */
+    .sql-editor {
+      width: 100%;
+      min-height: 160px;
+      resize: vertical;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-family: var(--font-mono, monospace);
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--text);
+      padding: 16px;
+      box-sizing: border-box;
+      tab-size: 2;
+    }
+    .sql-editor::placeholder { color: var(--text-dim); }
+
     .danger-badge {
       display: inline-flex;
       align-items: center;
@@ -65,9 +111,13 @@
       SQL<span>Craft</span>
     </a>
     <div class="navbar-links">
-      <span class="navbar-link" style="color: var(--text-dim); cursor: default; font-family: var(--font-mono); font-size: 12px;">
-        <span id="user-name">...</span>
-      </span>
+      <div class="navbar-user-card" id="navbar-user-card">
+        <div class="navbar-user-avatar" id="user-avatar">?</div>
+        <div class="navbar-user-info">
+          <div class="navbar-user-name" id="user-name">...</div>
+          <div class="navbar-user-plan" id="user-plan">free</div>
+        </div>
+      </div>
       <button class="btn btn-danger btn-sm" id="logout-btn">⏻ Выйти</button>
     </div>
   </nav>
@@ -174,8 +224,7 @@
               <span class="danger-badge" id="danger-badge" style="display:none;" title="Запрос может быть потенциально опасен для данных в БД — будьте осторожны">⚠</span>
             </span>
             <div class="sql-output-actions">
-              <button class="btn btn-ghost btn-sm" id="exec-sql-btn" style="display: none;">▶ Выполнить</button>
-              <!-- shown only when toggle is ON -->
+              <button class="btn btn-ghost btn-sm" id="exec-sql-btn">▶ Выполнить</button>
               <button class="btn-icon" id="copy-sql-btn" title="Копировать SQL">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
               </button>
@@ -184,27 +233,18 @@
               </button>
             </div>
           </div>
-          <div class="sql-output-body" id="sql-output-body">
-            <span class="sql-placeholder">SQL-запрос появится здесь после генерации...</span>
-          </div>
+          <textarea
+            class="sql-output-body sql-editor"
+            id="sql-output-body"
+            spellcheck="false"
+            placeholder="SQL-запрос появится здесь после генерации..."></textarea>
         </div>
 
         <!-- ── EXECUTE SECTION (shown only when DB connected) ── -->
         <div id="execute-section" style="display: none;" class="execute-section">
 
-          <div class="execute-row">
-            <div class="execute-row-info">
-              <div class="execute-row-label">Выполнить в БД</div>
-              <div class="execute-row-desc">Автоматически запускать запрос после генерации</div>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" id="execute-toggle" />
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-
-          <!-- RESULTS (shown when toggle ON) -->
-          <div id="results-section" style="display: none;">
+          <!-- RESULTS -->
+          <div id="results-section" style="margin-top: 16px;">
             <div class="results-card">
               <div class="results-header">
                 <span class="card-title"><span class="dot"></span> Результаты</span>

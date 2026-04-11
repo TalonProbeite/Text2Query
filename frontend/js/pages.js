@@ -159,15 +159,19 @@ function initWorkshop() {
   if (!auth.requireAuth()) return;
   document.body.style.visibility = 'visible';
 
-  // User name
-  const user = auth.getUser();
-  const userNameEl = document.getElementById('user-name');
-  if (userNameEl && user) userNameEl.textContent = user.name || user.email;
+  // User card — берём реальные данные с сервера
+  api.getMe().then(me => {
+    if (!me.is_logged) return;
+    const nameEl   = document.getElementById('user-name');
+    const planEl   = document.getElementById('user-plan');
+    const avatarEl = document.getElementById('user-avatar');
+    if (nameEl)   nameEl.textContent   = me.name || me.email || '';
+    if (planEl)   planEl.textContent   = me.plan || 'free';
+    if (avatarEl) avatarEl.textContent = (me.name || '?')[0].toUpperCase();
+  }).catch(() => {});
 
   let currentSQL     = '';
   let lastResults    = null;
-  let executeEnabled = false;
-
   // Multi-DB state
   const connectedDBs = [];
   let activeDBId = null;
@@ -179,17 +183,12 @@ function initWorkshop() {
   const dialect = dialectBtn && dialectDrop ? new DialectSelector(dialectBtn, dialectDrop) : null;
 
   // Elements
-  const executeToggle  = document.getElementById('execute-toggle');
   const resultsSection = document.getElementById('results-section');
   const executeSection = document.getElementById('execute-section');
   const execBtn        = document.getElementById('exec-sql-btn');
   const promptTextarea = document.getElementById('prompt-textarea');
   const generateBtn    = document.getElementById('generate-btn');
-
-  function syncExecBtn() {
-    if (!execBtn) return;
-    execBtn.style.display = (executeEnabled && currentSQL.length > 0) ? 'inline-flex' : 'none';
-  }
+  const sqlEditor      = document.getElementById('sql-output-body');
 
   /* ── HISTORY ──────────────────────────────────────────── */
   let history = [];
@@ -271,13 +270,17 @@ function initWorkshop() {
     });
   }
 
+  // Синхронизируем currentSQL с тем что юзер мог отредактировать в редакторе
+  if (sqlEditor) {
+    sqlEditor.addEventListener('input', () => { currentSQL = sqlEditor.value; });
+  }
+
   async function handleGenerate() {
     const prompt = promptTextarea.value.trim();
     if (!prompt) { showToast('Введите запрос', 'error'); return; }
     setGenerating(true);
     try {
       const { query, is_danger } = await api.generateSQL(prompt, dialect ? dialect.value : 'postgresql');
-      currentSQL = query;
       renderSQL(query, is_danger);
       addHistoryItem({
         prompt,
@@ -312,37 +315,30 @@ function initWorkshop() {
   }
 
   function renderSQL(sql, is_danger = false) {
-    const body  = document.getElementById('sql-output-body');
+    if (sqlEditor) sqlEditor.value = sql;
+    currentSQL = sql;
     const badge = document.getElementById('danger-badge');
-    if (!body) return;
-    body.innerHTML = highlightSQL(sql);
     if (badge) badge.style.display = is_danger ? 'inline-flex' : 'none';
-    syncExecBtn();
   }
 
   /* ── EXECUTE ──────────────────────────────────────────── */
   if (execBtn) execBtn.addEventListener('click', handleExecute);
 
-  if (executeToggle) {
-    executeToggle.addEventListener('change', () => {
-      executeEnabled = executeToggle.checked;
-      if (resultsSection) resultsSection.style.display = executeEnabled ? 'block' : 'none';
-      syncExecBtn();
-    });
-  }
-
   async function handleExecute() {
-    if (!currentSQL) { showToast('Сначала сгенерируйте SQL', 'error'); return; }
+    const sql = sqlEditor ? sqlEditor.value.trim() : currentSQL;
+    if (!sql) { showToast('Сначала сгенерируйте или введите SQL', 'error'); return; }
     if (!hasActiveDB()) { showToast('Подключите базу данных', 'error'); return; }
     if (execBtn) { execBtn.disabled = true; execBtn.textContent = '▶ Выполнение...'; }
+    if (executeSection) executeSection.style.display = 'block';
+    if (resultsSection) resultsSection.style.display = 'block';
     try {
       const activeDB = connectedDBs.find(d => d.id === activeDBId);
-      const results = await api.executeSQL(currentSQL, activeDB.config);
+      const results = await api.executeSQL(sql, activeDB.config);
       lastResults = results;
       renderResults(results);
-      showToast(`Получено ${results.rowCount} строк за ${results.execMs}ms`, 'success');
+      showToast(`Получено ${results.rowCount} строк`, 'success');
     } catch (err) {
-      showToast(`Ошибка выполнения: ${err.message}`, 'error');
+      showToast(err.msg || err.message || 'Ошибка выполнения', 'error');
     } finally {
       if (execBtn) { execBtn.disabled = false; execBtn.textContent = '▶ Выполнить'; }
     }
@@ -471,10 +467,7 @@ function initWorkshop() {
     renderDBList();
     if (connectedDBs.length === 0 && executeSection) {
       executeSection.style.display = 'none';
-      if (executeToggle) executeToggle.checked = false;
-      executeEnabled = false;
       if (resultsSection) resultsSection.style.display = 'none';
-      syncExecBtn();
     }
     showToast(`БД «${name}» отключена`, 'info');
   };
