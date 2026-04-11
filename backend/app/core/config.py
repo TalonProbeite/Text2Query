@@ -27,6 +27,14 @@ class Settings(BaseSettings):
     # public_key : str = (BASE_DIR / "certs" / "public.pem").read_text().strip()
     private_key: str
     public_key: str
+    @property
+    def private_key_decoded(self) -> str:
+        return self.private_key.replace("\\n", "\n")
+    
+    @property  
+    def public_key_decoded(self) -> str:
+        return self.public_key.replace("\\n", "\n")
+    
     algorithm: str = "RS256"
 
     llm_api_key:str
