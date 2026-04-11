@@ -47,6 +47,7 @@ class QueryHistoryRepository:
         )
 
         await self.db.commit()
+        await self.db.refresh(new_entry)
         return new_entry
         
     async def get_user_history(self,user_id)->Optional[list[QueryHistory]]:
