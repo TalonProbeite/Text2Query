@@ -1,7 +1,7 @@
 from  pydantic_settings import BaseSettings , SettingsConfigDict
 from typing import List
 from pathlib import Path 
-
+import base64
 
 BASE_DIR: Path = Path(__file__).resolve().parent.parent.parent.parent
 
@@ -25,15 +25,15 @@ class Settings(BaseSettings):
     
     # private_key : str = (BASE_DIR / "certs" / "private.pem").read_text().strip()
     # public_key : str = (BASE_DIR / "certs" / "public.pem").read_text().strip()
-    private_key: str
-    public_key: str
+    private_key_b64: str
+    public_key_b64: str
     @property
-    def private_key_decoded(self) -> str:
-        return self.private_key.replace("\\n", "\n")
-    
-    @property  
-    def public_key_decoded(self) -> str:
-        return self.public_key.replace("\\n", "\n")
+    def private_key(self) -> str:
+        return base64.b64decode(self.private_key_b64).decode("utf-8")
+
+    @property
+    def public_key(self) -> str:
+        return base64.b64decode(self.public_key_b64).decode("utf-8")
     
     algorithm: str = "RS256"
 
