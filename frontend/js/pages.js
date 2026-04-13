@@ -118,6 +118,8 @@ function initAuth() {
     const email = document.getElementById('login-email')?.value?.trim();
     const pass  = document.getElementById('login-pass')?.value;
     if (!email || !pass) return showAlert('login', 'Заполните все поля');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showAlert('login', 'Введите корректный email');
+    if (pass.length < 8) return showAlert('login', 'Пароль должен быть минимум 8 символов');
     clearAlert('login');
     const btn = document.getElementById('login-btn');
     btn.disabled = true; btn.textContent = 'Вход...';
@@ -137,6 +139,7 @@ function initAuth() {
     const email = document.getElementById('reg-email')?.value?.trim();
     const pass  = document.getElementById('reg-pass')?.value;
     if (!name || !email || !pass) return showAlert('register', 'Заполните все поля');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showAlert('register', 'Введите корректный email');
     if (pass.length < 8) return showAlert('register', 'Пароль должен быть минимум 8 символов');
     clearAlert('register');
     const btn = document.getElementById('register-btn');
@@ -294,7 +297,6 @@ function initWorkshop() {
       } else {
         showToast('SQL сгенерирован', 'success');
       }
-      if (executeEnabled && hasActiveDB()) await handleExecute();
     } catch (err) {
       showToast(err.msg || err.message || 'Неизвестная ошибка', 'error');
     } finally {
