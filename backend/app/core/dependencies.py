@@ -5,4 +5,4 @@ from app.core.config import settings
 
 @lru_cache
 def get_llm_service() -> LlmService:
-    return LlmService(api_key=settings.llm_api_key)
+    return LlmService(api_key=settings.llm.api_key, base_url=settings.llm.base_url)

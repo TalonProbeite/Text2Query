@@ -6,8 +6,8 @@ from app.core.config import settings
 
 
 def encode_jwt(attributes:dict,
-               private_key:str=settings.private_key,
-               algorithm:str= settings.algorithm, 
+               private_key:str=settings.jwt.private_key,
+               algorithm:str= settings.jwt.algorithm, 
                  )->str:
     try:
     
@@ -18,8 +18,8 @@ def encode_jwt(attributes:dict,
     
 
 def decode_jwt(token:str,
-               public_key:str=settings.public_key,  
-               algorithm:str = settings.algorithm ,
+               public_key:str=settings.jwt.public_key,  
+               algorithm:str = settings.jwt.algorithm ,
                )->dict:
 
     try:
