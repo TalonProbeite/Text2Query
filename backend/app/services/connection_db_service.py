@@ -53,7 +53,7 @@ class ConnectionDbService:
             await self.engine.dispose()
             self.engine = None
 
-    async def get_sctruct(self)->dict:
+    async def get_sctruct(self)->list:
         extract_query = {
             "postgresql":"""SELECT 
                                 cols.table_name, 
@@ -115,11 +115,11 @@ class ConnectionDbService:
                 tables = []
                 tb = set()
                 for row in result.mappings().all():
-                    if row[0] not in tb:
-                        tables.append({"name":row[0], "colums":[{"name":row[1], "type":row[2], "is_primary_or_foreign":row[3]}]})
-                        tb.add(row[0])
+                    if row["table_name"] not in tb:
+                        tables.append({"name":row["table_name"], "colums":[{"name":row["column_name"], "type":row['data_type'], "is_primary_or_foreign":row["is_primary_or_foreign"]}]})
+                        tb.add(row["table_name"])
                     else:
-                        tables[-1]["colums"].append({"name":row[1], "type":row[2], "is_primary_or_foreign":row[3]})
+                        tables[-1]["colums"].append({"name":row["column_name"], "type":row['data_type'], "is_primary_or_foreign":row["is_primary_or_foreign"]})
                 return tables
         except SQLAlchemyError as e:
             raise DBQueryError() from e

@@ -1,7 +1,7 @@
 from openai import AsyncOpenAI  
 from openai.types.chat import ChatCompletion
 import re
-
+import redis as Redis
 
 from app.core.exceptions import NotSqlPromt
 
@@ -23,19 +23,41 @@ class LlmService:
         return response
 
     @staticmethod
-    def build_sql_messages(query: str, sql_type: str) -> list[dict]:
-        system_instruction = (
-            f"Ты — профессиональный SQL-разработчик. Твоя задача — писать запросы на диалекте {sql_type}. "
-            "Ответ должен содержать ТОЛЬКО чистый SQL-код. Если запрос невыполним или не связан с SQL, "
-            "ответь строго: 'не связано с sql!'. Если запрос потенциально опасен для данных, "
-            "в конце ответа добавь маркер: danger."
-        )
-        
-        return [
-            {"role": "system", "content": system_instruction},
-            {"role": "user", "content": f"Запрос: {query}"}
-        ]
+    def build_sql_messages(query: str, sql_type: str, context:str="") -> list[dict]:
+        if context == "":
+            system_instruction = (
+                f"Ты — профессиональный SQL-разработчик. Твоя задача — писать запросы на диалекте {sql_type}. "
+                "Ответ должен содержать ТОЛЬКО чистый SQL-код. Если запрос невыполним или не связан с SQL, "
+                "ответь строго: 'не связано с sql!'. Если запрос потенциально опасен для данных, "
+                "в конце ответа добавь маркер: danger."
+            )
+            
+            
+        else:
+            system_instruction = (
+                f"Ты — профессиональный SQL-разработчик. Твоя задача — писать запросы на диалекте {sql_type}. "
+                "Ответ должен содержать ТОЛЬКО чистый SQL-код. Если запрос невыполним или не связан с SQL, "
+                "ответь строго: 'не связано с sql!'. Если запрос потенциально опасен для данных, "
+                "в конце ответа добавь маркер: danger."
+                f"контекст базы данных пользователя: {context}"
+            )
+            return [
+                {"role": "system", "content": system_instruction},
+                {"role": "user", "content": f"Запрос: {query}"}
+            ]
     
+    async def build_context(self , query: str, context:str)->str:
+        if len(context) <= 100:
+            return context
+        instructions = f"""Далее будет предствлена структура  базы данных пользователя , 
+                           твоя задача сократить его и оставить только 
+                           тот контекст который необходим для выполнения запроса от пользователя : 
+                           {query}.  В ответе ничего кроме сокращенного контекста быть не должно !
+                           Полный контекст: {context}"""
+        result = await self.get_response(messages=instructions)
+
+        return result
+
     @staticmethod
     def is_dangerous(sql_query)->bool:
 
@@ -61,11 +83,11 @@ class LlmService:
         return False
          
 
-    async def get_query(self, input_text: str, sql_type: str, model: str = "llama-3.3-70b-versatile") -> str:
-       
-        messages = self.build_sql_messages(input_text, sql_type)
+    async def get_query(self, input_text: str,full_context:str, sql_type: str, model: str = "llama-3.3-70b-versatile") -> str:
         
-       
+        context = await self.build_context(query=input_text, context=full_context)
+        messages = self.build_sql_messages(input_text, sql_type, context)
+        
         resp = await self.get_response(messages=messages, model=model)
         resp = resp.choices[0].message.content.strip()
         if resp == "не связано с sql!":
