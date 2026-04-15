@@ -52,6 +52,75 @@ class ConnectionDbService:
         if self.engine:
             await self.engine.dispose()
             self.engine = None
-    
+
+    async def get_sctruct(self)->dict:
+        extract_query = {
+            "postgresql":"""SELECT 
+                                cols.table_name, 
+                                cols.column_name, 
+                                cols.data_type,
+                                (SELECT count(*) > 0 
+                                FROM information_schema.key_column_usage kcu 
+                                WHERE kcu.table_name = cols.table_name 
+                                AND kcu.column_name = cols.column_name) as is_primary_or_foreign
+                            FROM 
+                                information_schema.columns cols
+                            WHERE 
+                                cols.table_schema = 'public'
+                            ORDER BY 
+                                cols.table_name, cols.ordinal_position;""",
+            "mariadb":f"""SELECT 
+                            c.TABLE_NAME, 
+                            c.COLUMN_NAME, 
+                            c.DATA_TYPE, 
+                            c.COLUMN_KEY,
+                            k.REFERENCED_TABLE_NAME, 
+                            k.REFERENCED_COLUMN_NAME
+                        FROM 
+                            information_schema.columns c
+                        LEFT JOIN 
+                            information_schema.KEY_COLUMN_USAGE k 
+                            ON c.TABLE_SCHEMA = k.TABLE_SCHEMA 
+                            AND c.TABLE_NAME = k.TABLE_NAME 
+                            AND c.COLUMN_NAME = k.COLUMN_NAME
+                        WHERE 
+                            c.TABLE_SCHEMA = '{self.connection_data['db_name']}'
+                        ORDER BY 
+                            c.TABLE_NAME, c.ORDINAL_POSITION;""",
+            "mysql":f"""SELECT 
+                            c.TABLE_NAME, 
+                            c.COLUMN_NAME, 
+                            c.DATA_TYPE, 
+                            c.COLUMN_KEY,
+                            k.REFERENCED_TABLE_NAME, 
+                            k.REFERENCED_COLUMN_NAME
+                        FROM 
+                            information_schema.columns c
+                        LEFT JOIN 
+                            information_schema.KEY_COLUMN_USAGE k 
+                            ON c.TABLE_SCHEMA = k.TABLE_SCHEMA 
+                            AND c.TABLE_NAME = k.TABLE_NAME 
+                            AND c.COLUMN_NAME = k.COLUMN_NAME
+                        WHERE 
+                            c.TABLE_SCHEMA = '{self.connection_data['db_name']}'
+                        ORDER BY 
+                            c.TABLE_NAME, c.ORDINAL_POSITION;"""
+        }
             
+        if not self.engine:
+            raise DBConnectionError("No active connection")
+        try:
+            async with AsyncSession(self.engine) as session:
+                result = await session.execute(text(extract_query[self.dialect]))
+                tables = []
+                tb = set()
+                for row in result.mappings().all():
+                    if row[0] not in tb:
+                        tables.append({"name":row[0], "colums":[{"name":row[1], "type":row[2], "is_primary_or_foreign":row[3]}]})
+                        tb.add(row[0])
+                    else:
+                        tables[-1]["colums"].append({"name":row[1], "type":row[2], "is_primary_or_foreign":row[3]})
+                return tables
+        except SQLAlchemyError as e:
+            raise DBQueryError() from e
    

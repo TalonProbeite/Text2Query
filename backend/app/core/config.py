@@ -19,6 +19,8 @@ class JWTSettings(BaseModel):
     def public_key(self) -> str:
         return base64.b64decode(self.public_key_b64).decode("utf-8")
 
+class RedisSettings(BaseModel):
+    url:str
 
 class DatabaseSettings(BaseModel):
     url: str
@@ -44,6 +46,7 @@ class Settings(BaseSettings):
     db: DatabaseSettings
     jwt: JWTSettings
     llm: LLMSettings
+    redis:RedisSettings
 
     model_config = SettingsConfigDict(env_file=".env", env_nested_delimiter="__")
 
