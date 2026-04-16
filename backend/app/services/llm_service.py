@@ -32,7 +32,7 @@ class LlmService:
                 "в конце ответа добавь маркер: danger."
             )
             
-            
+              
         else:
             system_instruction = (
                 f"Ты — профессиональный SQL-разработчик. Твоя задача — писать запросы на диалекте {sql_type}. "
@@ -41,27 +41,28 @@ class LlmService:
                 "в конце ответа добавь маркер: danger."
                 f"контекст базы данных пользователя: {context}"
             )
-            return [
-                {"role": "system", "content": system_instruction},
-                {"role": "user", "content": f"Запрос: {query}"}
-            ]
+        return [
+            {"role": "system", "content": system_instruction},
+            {"role": "user", "content": f"Запрос: {query}"}
+        ]
     
     async def build_context(self , query: str, context:str)->str:
-        if len(context) <= 100:
+        if len(context) <= 10:
             return context
         instructions = f"""Далее будет предствлена структура  базы данных пользователя , 
                            твоя задача сократить его и оставить только 
                            тот контекст который необходим для выполнения запроса от пользователя : 
                            {query}.  В ответе ничего кроме сокращенного контекста быть не должно !
                            Полный контекст: {context}"""
-        result = await self.get_response(messages=instructions)
+        messages = [{"role": "user", "content": instructions}]
+        result = await self.get_response(messages=messages)
 
-        return result
+        return result.choices[0].message.content.strip()
 
     @staticmethod
     def is_dangerous(sql_query)->bool:
 
-        if sql_query[-7] == "danger":
+        if sql_query.strip().endswith("danger"):
             return True
         blacklist = [
             'DROP', 'TRUNCATE', 'GRANT', 'REVOKE', 

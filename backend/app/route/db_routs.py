@@ -37,10 +37,10 @@ async def execute_query(db_data:DbExecute):
         result = await service.execute_query(data.get("query"))
         return result
     except (DBConnectionError, DBQueryError) as e:
-        logger.info(f"Connection to user database failed: {e}")
+        logger.info(f"Connection to user database failed: {e.__cause__}")
         raise HTTPException(status_code=400 , detail="Connection to user database failed")
     except Exception as e:
-        logger.info(f'Error connecting to user database: {e}')
+        logger.info(f'Error connecting to user database: {e.__cause__}')
         raise HTTPException(status_code=500)   
     finally:
         await service.disconnect()

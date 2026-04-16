@@ -32,9 +32,9 @@ async def get_sql(user_data: UserPrompt ,
         await repo.add_query(request.state.user_id ,user_data.prompt, resp,is_danger, user_data.sql_type)
         return SqlResponse(query=resp , is_danger=is_danger)
     except NotSqlPromt as e:
-        logger.info(f"The user entered a promt not related to sql:{e}")
+        logger.info(f"The user entered a promt not related to sql:{e.__cause__}")
         raise HTTPException(status_code=400 , detail="The query is not related to sql!")
     except Exception as e:
-        logger.warning(f"Error when generating sql query:{e}")
+        logger.warning(f"Error when generating sql query:{e.__cause__}")
         raise HTTPException(status_code=502, detail="Failed to generate response")
     
