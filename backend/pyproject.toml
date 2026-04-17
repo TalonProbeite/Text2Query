@@ -16,4 +16,6 @@ dependencies = [
     "uvicorn>=0.42.0",
     "openai>=2.30.0",
     "redis[asyncio]>=7.4.0",
+    "fastapi-mail>=1.6.2",
+    "alembic>=1.18.4",
 ]
