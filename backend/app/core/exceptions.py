@@ -7,3 +7,4 @@ class UserBannedError(Exception): pass
 class NotSqlPromt(Exception):pass
 class DBConnectionError(Exception):pass
 class DBQueryError(Exception):pass
+class VerificationTokenExpireError(Exception):pass

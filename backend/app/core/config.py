@@ -3,6 +3,8 @@ from typing import List
 from pathlib import Path 
 import base64
 from pydantic import BaseModel
+from fastapi_mail  import ConnectionConfig
+
 
 BASE_DIR: Path = Path(__file__).resolve().parent.parent.parent.parent
 
@@ -25,6 +27,29 @@ class RedisSettings(BaseModel):
 class DatabaseSettings(BaseModel):
     url: str
 
+class MailSettings(BaseModel):
+    MAIL_USERNAME:str
+    MAIL_PASSWORD:str
+    MAIL_FROM:str
+    MAIL_PORT:int = 587
+    MAIL_SERVER:str = "smtp.gmail.com"
+    MAIL_STARTTLS:bool = True
+    MAIL_SSL_TLS:bool = False
+    USE_CREDENTIALS:bool = True
+    VALIDATE_CERTS:bool = True
+
+    @property
+    def config(self):
+        return  ConnectionConfig(
+            MAIL_USERNAME=self.MAIL_USERNAME,
+            MAIL_PASSWORD=self.MAIL_PASSWORD, 
+            MAIL_FROM=self.MAIL_FROM,
+            MAIL_PORT=self.MAIL_PORT,
+            MAIL_SERVER=self.MAIL_SERVER,
+            MAIL_STARTTLS=self.MAIL_STARTTLS,
+            MAIL_SSL_TLS=self.MAIL_SSL_TLS,
+            USE_CREDENTIALS=self.USE_CREDENTIALS,
+            VALIDATE_CERTS=self.VALIDATE_CERTS)
 
 class LLMSettings(BaseModel):
     api_key: str
@@ -47,6 +72,7 @@ class Settings(BaseSettings):
     jwt: JWTSettings
     llm: LLMSettings
     redis:RedisSettings
+    mail:MailSettings
 
     model_config = SettingsConfigDict(env_file=".env", env_nested_delimiter="__")
 
