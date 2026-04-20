@@ -22,7 +22,10 @@ async def get_sql(user_data: UserPrompt ,
                   db:AsyncSession = Depends(get_db)):
     try:
         raw = await redis.get(f"session:user_{request.state.user_id}")
-        db_struct = json.loads(raw)
+        if raw:
+            db_struct = json.loads(raw)
+        else:
+            db_struct = ""
         resp = await llm.get_query(input_text=user_data.prompt, sql_type=user_data.sql_type , full_context=db_struct)
         
         is_danger =  llm.is_dangerous(resp)
@@ -35,6 +38,6 @@ async def get_sql(user_data: UserPrompt ,
         logger.info(f"The user entered a promt not related to sql:{e.__cause__}")
         raise HTTPException(status_code=400 , detail="The query is not related to sql!")
     except Exception as e:
-        logger.warning(f"Error when generating sql query:{e.__cause__}")
+        logger.warning(f"Error when generating sql query:{e}")
         raise HTTPException(status_code=502, detail="Failed to generate response")
     
