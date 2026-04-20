@@ -5,7 +5,7 @@ from datetime import datetime , timezone , timedelta
 
 from app.models.users import User
 from app.utils.pas_hashing import get_hash_pass , match_password
-from app.core.exceptions import InvalidPassword , UserAlreadyExists , UserNotFound , UserBannedError , VerificationTokenExpireError
+from app.core.exceptions import InvalidPassword , UserAlreadyExists , UserNotFound , UserBannedError , VerificationTokenExpireError  , IncorrectVerificationTokenError
 
 
 
@@ -80,7 +80,7 @@ class UserRepository:
         return user
     
     async def check_verifi_token(self, user_id:int, 
-                               token:str, )->bool:
+                               token:str, )->User:
         
         user = await self.get_by_id(user_id=user_id)
 
@@ -91,11 +91,14 @@ class UserRepository:
         if  datetime.now(timezone.utc) > user.token_exp_time:
             raise VerificationTokenExpireError()
         
-        return user.verification_token == token
+        if user.verification_token == token:
+            return user
+        else:
+            raise IncorrectVerificationTokenError()
     
     async def set_email(self , user_id, new_mail)->User:
         user = await self.get_by_id(user_id=user_id)
-        mail = self.get_by_email(new_mail)
+        mail = await self.get_by_email(new_mail)
         if not user:    
             raise UserNotFound()
         if not user.is_active:
@@ -111,3 +114,13 @@ class UserRepository:
         except Exception as e:
             await self.db.rollback()
             raise e
+        
+    async def set_verefi(self, user_id)->User:
+        user = await self.get_by_id(user_id)
+        if user:
+            user.is_verified = True
+            await self.db.commit()
+            await self.db.refresh(user) 
+            return user
+        else:
+            raise UserNotFound()

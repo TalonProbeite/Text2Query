@@ -32,6 +32,7 @@ class MailSettings(BaseModel):
     MAIL_PASSWORD:str
     MAIL_FROM:str
     MAIL_PORT:int = 587
+    MAIL_FROM_NAME:str="SqlCraft Support"
     MAIL_SERVER:str = "smtp.gmail.com"
     MAIL_STARTTLS:bool = True
     MAIL_SSL_TLS:bool = False
@@ -44,6 +45,7 @@ class MailSettings(BaseModel):
             MAIL_USERNAME=self.MAIL_USERNAME,
             MAIL_PASSWORD=self.MAIL_PASSWORD, 
             MAIL_FROM=self.MAIL_FROM,
+            MAIL_FROM_NAME=self.MAIL_FROM_NAME,
             MAIL_PORT=self.MAIL_PORT,
             MAIL_SERVER=self.MAIL_SERVER,
             MAIL_STARTTLS=self.MAIL_STARTTLS,

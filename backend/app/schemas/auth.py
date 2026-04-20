@@ -19,5 +19,12 @@ class AuthResponse(BaseModel):
 
     id: int
     name: str
-    email: str
+    email: EmailStr
     plan: str
+
+
+class VerificationResponse(BaseModel):
+
+    id: int
+    email: EmailStr
+    token: str

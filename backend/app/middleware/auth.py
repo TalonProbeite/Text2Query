@@ -19,7 +19,8 @@ PUBLIC_ROUTES = {
     "/css/style.css", 
     "/js/pages.js",
     "/js/core.js",
-    "/image/fav.png"
+    "/image/fav.png",
+    "/auth/ver_conf"
 }
 
 
