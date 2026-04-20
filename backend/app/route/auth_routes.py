@@ -4,7 +4,7 @@ from loguru import logger
 from datetime import datetime, timezone, timedelta
 from fastapi_mail import  MessageSchema , MessageType
 
-from app.schemas.auth import AuthResponse , UserLogIn , UserRegister , VerificationResponse
+from app.schemas.auth import AuthResponse , UserLogIn , UserRegister , VerificationResponse , GetToken  , SetMail
 from app.db.database import get_db
 from app.repositories.users_repo import UserRepository
 from app.core.exceptions import InvalidPassword , UserNotFound ,UserBannedError , JWTTokenDecodeError , JWTTokenGenerateError, UserAlreadyExists , IncorrectVerificationTokenError , VerificationTokenExpireError
@@ -39,7 +39,8 @@ async def login(user_data:UserLogIn ,response: Response, db:AsyncSession = Depen
             id=user_model.id,
             name=user_model.name,
             email=user_model.email,
-            plan=user_model.plan
+            plan=user_model.plan,
+            is_verified=user_model.is_verified
         )
     except InvalidPassword as e:
         logger.info(f"Invalid password:{e.__cause__}")
@@ -73,7 +74,8 @@ async def signup(user_data:UserRegister,db:AsyncSession = Depends(get_db)):
             id=user_model.id,
             name=user_model.name,
             email=user_model.email,
-            plan=user_model.plan
+            plan=user_model.plan,
+            is_verified=user_model.is_verified
         )
     except UserAlreadyExists as e:
         logger.info(f"Email already exists:{e.__cause__}")
@@ -119,7 +121,7 @@ async def is_logged(request: Request, db: AsyncSession = Depends(get_db)):
         "plan": user.plan
     }
 
-@router.post("/ver_conf" , response_model=AuthResponse)
+@router.post("/verify_mail" , response_model=AuthResponse)
 async def verify_mail(user_data: VerificationResponse , response:Response, db: AsyncSession = Depends(get_db)):
     repo = UserRepository(db)
     try:
@@ -147,7 +149,8 @@ async def verify_mail(user_data: VerificationResponse , response:Response, db: A
             id=user.id,
             name=user.name,
             email=user.email,
-            plan=user.plan
+            plan=user.plan,
+            is_verified=user.is_verified
         )
         else:
             logger.info("Invalid verification code!")
@@ -162,10 +165,64 @@ async def verify_mail(user_data: VerificationResponse , response:Response, db: A
         logger.info("Invalid verification code!")
         raise HTTPException(status_code=400, detail="The token's lifetime has expired or the code is incorrect!")
     except Exception as e:
-        logger.exception(f"Unknown error when trying to confirm verification: {e.__cause__}")
+        logger.warning(f"Unknown error when trying to confirm verification: {e.__cause__}")
         raise HTTPException(status_code=500)
     
 
-@router.post("/send_code")
-async def send_ver_token(user_data: VerificationResponse , db: AsyncSession = Depends(get_db)):
-    pass
+@router.post("/resend_verification_code")
+async def resend_verification_code(user_data: GetToken , db: AsyncSession = Depends(get_db)):
+    repo = UserRepository(db)
+    try:
+        token = generate_verification_code()
+        html = get_html_verify_message(token)
+        user = await repo.add_verifi_token(user_id=user_data.id, token=token)
+        await send_email_async(subject="SqlCraft | Подтверждение регистрации", email_to=user_data.email , body=html)
+        return AuthResponse(
+            id=user.id,
+            name=user.name,
+            email=user.email,
+            plan=user.plan,
+            is_verified=user.is_verified
+        )
+    except UserNotFound as e:
+        logger.warning(f"Invalid id from user's schema:{e.__cause__}")
+        raise HTTPException(status_code=400)
+    except UserBannedError as e:
+        logger.info(f"Access denied:{e.__cause__}")
+        raise HTTPException(status_code=403 , detail="Access denied")
+    except (VerificationTokenExpireError , IncorrectVerificationTokenError) as e:
+        logger.info("Invalid verification code!")
+        raise HTTPException(status_code=400, detail="The token's lifetime has expired or the code is incorrect!")
+    except Exception as e:
+        logger.warning(f"Unknown error when trying to confirm verification: {e.__cause__}")
+        raise HTTPException(status_code=500)
+    
+
+@router.post("/update_email")
+async def update_email(user_data:SetMail, db:AsyncSession= Depends(get_db)):
+    repo = UserRepository(db)
+    try:
+        user = await repo.update_email(user_data.id , user_data.email , user_data.new_email)
+        token = generate_verification_code()
+        html = get_html_verify_message(token)
+        user = await repo.add_verifi_token(user_id=user.id, token=token)
+        await send_email_async(subject="SqlCraft | Подтверждение регистрации", email_to=user.email , body=html)
+        return AuthResponse(
+            id=user.id,
+            name=user.name,
+            email=user.email,
+            plan=user.plan,
+            is_verified=user.is_verified
+        )
+    except UserNotFound as e:
+        logger.warning(f"Invalid id from user's schema:{e.__cause__}")
+        raise HTTPException(status_code=400)
+    except UserBannedError as e:
+        logger.info(f"Access denied:{e.__cause__}")
+        raise HTTPException(status_code=403 , detail="Access denied")
+    except (VerificationTokenExpireError , IncorrectVerificationTokenError) as e:
+        logger.info("Invalid verification code!")
+        raise HTTPException(status_code=400, detail="The token's lifetime has expired or the code is incorrect!")
+    except Exception as e:
+        logger.warning(f"Unknown error when trying to confirm verification: {e.__cause__}")
+        raise HTTPException(status_code=500)

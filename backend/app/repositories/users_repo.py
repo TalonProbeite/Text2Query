@@ -5,7 +5,7 @@ from datetime import datetime , timezone , timedelta
 
 from app.models.users import User
 from app.utils.pas_hashing import get_hash_pass , match_password
-from app.core.exceptions import InvalidPassword , UserAlreadyExists , UserNotFound , UserBannedError , VerificationTokenExpireError  , IncorrectVerificationTokenError
+from app.core.exceptions import InvalidPassword , UserAlreadyExists , UserNotFound , UserBannedError , VerificationTokenExpireError  , IncorrectVerificationTokenError , UserAlreadyVerifiedError
 
 
 
@@ -70,6 +70,8 @@ class UserRepository:
             raise UserNotFound()
         if not user.is_active:
             raise UserBannedError()
+        if user.is_verified:
+            raise UserAlreadyVerifiedError()
 
         
         user.verification_token = token
@@ -96,18 +98,22 @@ class UserRepository:
         else:
             raise IncorrectVerificationTokenError()
     
-    async def set_email(self , user_id, new_mail)->User:
+    async def update_email(self , user_id, email,new_email)->User:
         user = await self.get_by_id(user_id=user_id)
-        mail = await self.get_by_email(new_mail)
         if not user:    
+            raise UserNotFound()    
+        if user.email != email:
             raise UserNotFound()
+        if user.is_verified:
+            raise UserAlreadyVerifiedError()
+        mail = await self.get_by_email(new_email)
         if not user.is_active:
             raise UserBannedError()
         if mail:
             raise UserAlreadyExists()
         
         try:
-            user.email = new_mail
+            user.email = new_email
             await self.db.commit()
             await self.db.refresh(user) 
             return user

@@ -20,7 +20,9 @@ PUBLIC_ROUTES = {
     "/js/pages.js",
     "/js/core.js",
     "/image/fav.png",
-    "/auth/ver_conf"
+    "/auth/verify_mail",
+    "/auth/update_email",
+    "/auth//resend_verification_code"
 }
 
 
