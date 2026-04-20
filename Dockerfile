@@ -3,7 +3,6 @@ FROM python:3.11-slim AS builder
 
 WORKDIR /app
 
-# Системные зависимости для сборки
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
@@ -12,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN pip install --no-cache-dir uv
 
 COPY backend/pyproject.toml .
-
+# Устанавливаем зависимости
 RUN uv pip install --system --no-cache-dir -e . || \
     uv pip install --system --no-cache-dir -r pyproject.toml
 
@@ -22,31 +21,39 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Системные зависимости для рантайма (libpq нужен asyncpg)
+# КРИТИЧЕСКОЕ ИЗМЕНЕНИЕ: Добавляем ca-certificates для работы почты через TLS
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
+    redis-server \
+    supervisor \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Непривилегированный пользователь
 RUN adduser --disabled-password --gecos "" appuser
 
-# Копируем зависимости из builder
+# Копируем Python зависимости из билдера
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Копируем код
+# Копируем код проекта
 COPY backend/ .
-COPY frontend/ /frontend
+# Если фронтенд реально нужен внутри этого же образа:
+COPY frontend/ /frontend 
 
-# Папка под логи с правильным владельцем
-RUN mkdir -p /app/logs && chown -R appuser:appuser /app
+# Настройка прав
+RUN mkdir -p /app/logs /var/log/supervisor /var/run/redis /var/lib/redis && \
+    chown -R appuser:appuser /app /var/log/supervisor /var/run/redis /var/lib/redis
+
+# Конфиг супервизора
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 USER appuser
 
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
+ENV REDIS_HOST=127.0.0.1
 
 EXPOSE 8000
 
-CMD ["python", "run.py"]
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

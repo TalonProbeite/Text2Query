@@ -190,7 +190,7 @@ const api = {
       throw { msg: data.detail || 'Неизвестная ошибка' };
     }
     const data = await res.json();
-    return { user: { id: data.id, name: data.name, email: data.email, plan: data.plan } };
+    return { user: { id: data.id, name: data.name, email: data.email, plan: data.plan, is_verified: data.is_verified } };
   },
 
   async register(name, email, password) {
@@ -221,7 +221,7 @@ const api = {
       throw { msg: data.detail || 'Неизвестная ошибка' };
     }
     const data = await res.json();
-    return { user: { id: data.id, name: data.name, email: data.email, plan: data.plan } };
+    return { user: { id: data.id, name: data.name, email: data.email, plan: data.plan, is_verified: data.is_verified } };
   },
 };
 

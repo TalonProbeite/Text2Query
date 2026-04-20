@@ -15,9 +15,9 @@ class User(Base):
     plan = Column(String(10),default="free")
     is_active = Column(Boolean,default=True)
     plan_expires_at = Column(DateTime, default=None)
-    api_key  = Column(String(200), nullable=True,default=None, unique=True)
     is_verified = Column(Boolean,default=False)
     verification_token = Column(String(100), default=None)
+    token_exp_time = Column(DateTime(timezone=True) , default=None)
     
     history = relationship("QueryHistory", back_populates="user")
     databases = relationship("Database", back_populates="user")

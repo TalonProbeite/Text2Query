@@ -19,7 +19,12 @@ PUBLIC_ROUTES = {
     "/css/style.css", 
     "/js/pages.js",
     "/js/core.js",
-    "/image/fav.png"
+    "/image/fav.png",
+    "/auth/verify_mail",
+    "/auth/update_email",
+    "/auth//resend_verification_code",
+    "/verify.html"
+    
 }
 
 

@@ -19,5 +19,25 @@ class AuthResponse(BaseModel):
 
     id: int
     name: str
-    email: str
+    email: EmailStr
     plan: str
+    is_verified:bool
+
+
+class VerificationResponse(BaseModel):
+
+    id: int
+    email: EmailStr
+    token: str
+
+
+class GetToken(BaseModel):
+
+    id:int
+    email:EmailStr
+
+class SetMail(BaseModel):
+
+    id:int
+    email:EmailStr
+    new_email:EmailStr
