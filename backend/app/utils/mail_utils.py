@@ -29,46 +29,57 @@ def get_html_verify_message(token):
 <html>
 <head>
     <style>
-        body {{
-            margin: 0;
-            background-color: #0f172a;
-            font-family: sans-serif;
-            color: #94a3b8;
-        }}
-        .main {{
-            background-color: #1e293b;
-            margin: 40px auto;
-            max-width: 500px;
-            border-radius: 12px;
-            border: 1px solid #334155;
-            text-align: center;
-        }}
-        .logo {{
-            color: #4ade80;
-            font-size: 24px;
-            font-weight: bold;
-            padding: 30px;
-            display: block;
-        }}
-        .code-container {{
-            background-color: #0f172a;
-            border: 1px dashed #4ade80;
-            margin: 20px 40px;
-            padding: 20px;
-            border-radius: 8px;
-        }}
-        .code-value {{
-            font-family: monospace;
-            font-size: 32px;
-            color: #4ade80;
-            letter-spacing: 5px;
-        }}
-        .footer {{
-            font-size: 12px;
-            color: #64748b;
-            padding: 20px;
-        }}
-    </style>
+    body {{
+        margin: 0;
+        background-color: #0f172a;
+        font-family: sans-serif;
+        /* Делаем основной текст значительно светлее */
+        color: #e2e8f0; 
+    }}
+    .main {{
+        background-color: #1e293b;
+        margin: 40px auto;
+        max-width: 500px;
+        border-radius: 12px;
+        border: 1px solid #334155;
+        text-align: center;
+    }}
+    .logo {{
+        color: #4ade80;
+        font-size: 24px;
+        font-weight: bold;
+        padding: 30px;
+        display: block;
+    }}
+    /* Заголовок уже белый, оставляем */
+    h1 {{
+        color: #f8fafc;
+    }}
+    /* Текст "Ваш код активации" и инструкции */
+    p {{
+        color: #f1f5f9; 
+        line-height: 1.5;
+    }}
+    .code-container {{
+        background-color: #0f172a;
+        border: 1px dashed #4ade80;
+        margin: 20px 40px;
+        padding: 20px;
+        border-radius: 8px;
+    }}
+    .code-value {{
+        font-family: monospace;
+        font-size: 32px;
+        color: #4ade80;
+        letter-spacing: 5px;
+    }}
+    .footer {{
+        font-size: 12px;
+        /* Футер чуть приглушеннее основного текста, но читаемый */
+        color: #94a3b8; 
+        padding: 20px;
+    }}
+</style>
 </head>
 <body>
     <div class="main">
