@@ -147,7 +147,9 @@ function initAuth() {
     try {
       const { user } = await api.register(name, email, pass);
       auth.setSession(user);
-      window.location.href = 'workshop.html';
+      // Сохраняем полный AuthResponse для страницы верификации
+      localStorage.setItem('sqlcraft_user', JSON.stringify(user));
+      window.location.href = 'verify.html';
     } catch (err) {
       showAlert('register', err.msg || err.message || 'Неизвестная ошибка');
     } finally {

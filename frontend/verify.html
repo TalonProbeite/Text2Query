@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SQLCraft — Подтверждение почты</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="icon" type="image/png" href="image/fav.png">
+  <style>
+    .verify-layout {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 16px;
+      position: relative;
+    }
+    .verify-glow {
+      position: absolute;
+      width: 500px; height: 500px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(0,229,160,0.06) 0%, transparent 70%);
+      pointer-events: none;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+    }
+    .verify-box {
+      width: 100%;
+      max-width: 420px;
+      position: relative;
+      z-index: 1;
+    }
+    .verify-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 32px;
+    }
+    .verify-logo-mark {
+      width: 36px; height: 36px;
+      background: var(--accent);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; color: #000;
+    }
+    .verify-logo-text {
+      font-family: var(--font-ui);
+      font-size: 22px; font-weight: 800;
+      color: var(--text);
+    }
+    .verify-logo-text span { color: var(--accent); }
+
+    .verify-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .verify-icon {
+      width: 56px; height: 56px;
+      background: rgba(0,229,160,0.1);
+      border: 1px solid rgba(0,229,160,0.2);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px;
+      margin: 0 auto 4px;
+    }
+    .verify-title {
+      font-size: 20px; font-weight: 700;
+      color: var(--text); text-align: center;
+    }
+    .verify-desc {
+      font-size: 13px; color: var(--text-muted);
+      text-align: center; line-height: 1.6;
+    }
+
+    /* Email row */
+    .verify-email-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      gap: 10px;
+    }
+    .verify-email-addr {
+      font-family: var(--font-mono);
+      font-size: 12px; color: var(--accent);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .verify-change-btn {
+      background: none; border: none;
+      font-family: var(--font-mono); font-size: 11px;
+      color: var(--text-muted); cursor: pointer;
+      white-space: nowrap; padding: 0;
+      transition: color 0.15s; flex-shrink: 0;
+    }
+    .verify-change-btn:hover { color: var(--text); }
+
+    /* Change email form (hidden by default) */
+    .change-email-form {
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .change-email-form.open { display: flex; }
+    .change-email-form .input-label {
+      font-size: 11px; margin-bottom: 4px;
+    }
+
+    /* Code input */
+    .verify-code-input {
+      width: 100%;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      font-family: var(--font-mono);
+      font-size: 22px; font-weight: 700;
+      color: var(--text); text-align: center;
+      letter-spacing: 8px; outline: none;
+      transition: border-color 0.15s;
+    }
+    .verify-code-input:focus { border-color: var(--accent); }
+    .verify-code-input::placeholder {
+      letter-spacing: 4px; font-size: 16px; color: var(--text-dim);
+    }
+
+    /* Resend */
+    .verify-resend-row {
+      display: flex; align-items: center;
+      justify-content: center; gap: 8px;
+      font-size: 12px; font-family: var(--font-mono);
+      color: var(--text-muted);
+    }
+    .resend-btn {
+      background: none; border: none;
+      font-family: var(--font-mono); font-size: 12px;
+      color: var(--accent); cursor: pointer;
+      padding: 0; transition: opacity 0.15s;
+    }
+    .resend-btn:disabled { color: var(--text-dim); cursor: default; }
+
+    /* Alert */
+    .verify-alert {
+      background: rgba(255,107,53,0.1);
+      border: 1px solid rgba(255,107,53,0.3);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 12px; font-family: var(--font-mono);
+      color: #ff9090; display: none;
+    }
+  </style>
+</head>
+<body id="verify-page">
+
+<nav class="navbar">
+  <a class="navbar-logo" href="index.html">
+    <div class="navbar-logo-icon">⚡</div>
+    SQL<span>Craft</span>
+  </a>
+  <div class="navbar-links">
+    <a class="navbar-link" href="index.html">← На главную</a>
+  </div>
+</nav>
+
+<main class="page-content">
+  <div class="verify-layout">
+    <div class="verify-glow"></div>
+
+    <div class="verify-box fade-up">
+
+      <div class="verify-logo">
+        <div class="verify-logo-mark">⚡</div>
+        <div class="verify-logo-text">SQL<span>Craft</span></div>
+      </div>
+
+      <div class="verify-card">
+
+        <div class="verify-icon">✉️</div>
+
+        <div class="verify-title">Подтвердите почту</div>
+
+        <p class="verify-desc">
+          Мы отправили код подтверждения на вашу почту.<br>
+          Введите его ниже чтобы активировать аккаунт.
+        </p>
+
+        <!-- Текущая почта -->
+        <div class="verify-email-row">
+          <span class="verify-email-addr" id="verify-email">—</span>
+          <button class="verify-change-btn" id="toggle-change-btn">Изменить почту →</button>
+        </div>
+
+        <!-- Форма смены почты -->
+        <div class="change-email-form" id="change-email-form">
+          <div class="input-group">
+            <label class="input-label">Новая почта</label>
+            <input class="input" id="new-email-input" type="email" placeholder="new@example.com" />
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-secondary btn-sm" style="flex:1; justify-content:center;" id="cancel-change-btn">Отмена</button>
+            <button class="btn btn-primary btn-sm" style="flex:1; justify-content:center;" id="save-email-btn">Сохранить</button>
+          </div>
+        </div>
+
+        <!-- Alert -->
+        <div class="verify-alert" id="verify-alert"></div>
+
+        <!-- Code input -->
+        <div class="input-group" style="gap:6px;">
+          <label class="input-label">Код из письма</label>
+          <input
+            class="verify-code-input"
+            id="verify-code"
+            type="text"
+            inputmode="numeric"
+            maxlength="6"
+            placeholder="······"
+            autocomplete="one-time-code"
+          />
+        </div>
+
+        <!-- Submit -->
+        <button class="btn btn-primary" id="verify-btn" style="width:100%; justify-content:center; padding:13px;">
+          Подтвердить
+        </button>
+
+        <!-- Resend -->
+        <div class="verify-resend-row">
+          <span>Не получили письмо?</span>
+          <button class="resend-btn" id="resend-btn" disabled>
+            Отправить снова (<span id="resend-timer">30</span>с)
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="footer-bottom" style="border-top:1px solid var(--border); padding:16px 24px;">
+    <span>© 2025 SQLCraft. Все права защищены.</span>
+    <div class="footer-bottom-links">
+      <a href="#">Конфиденциальность</a>
+      <a href="#">Условия</a>
+    </div>
+  </div>
+</footer>
+
+<div id="toast-container"></div>
+<script src="js/core.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+  /* ── ДАННЫЕ ИЗ LOCALSTORAGE ── */
+  function getUser() {
+    try { return JSON.parse(localStorage.getItem('sqlcraft_user') || 'null'); }
+    catch { return null; }
+  }
+  function saveUser(user) {
+    localStorage.setItem('sqlcraft_user', JSON.stringify(user));
+  }
+
+  const user = getUser();
+  if (!user || !user.email || !user.id) {
+    window.location.href = 'auth.html';
+    return;
+  }
+
+  // Если уже верифицирован — сразу в мастерскую
+  if (user.is_verified) {
+    window.location.href = 'workshop.html';
+    return;
+  }
+
+  const emailEl = document.getElementById('verify-email');
+  emailEl.textContent = user.email;
+
+  /* ── ALERT ── */
+  function showAlert(msg) {
+    const el = document.getElementById('verify-alert');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+  function clearAlert() {
+    const el = document.getElementById('verify-alert');
+    el.style.display = 'none';
+  }
+
+  /* ── RESEND TIMER ── */
+  function startResendTimer() {
+    const resendBtn = document.getElementById('resend-btn');
+    let seconds = 30;
+    resendBtn.disabled = true;
+    resendBtn.innerHTML = `Отправить снова (<span id="resend-timer">${seconds}</span>с)`;
+
+    const interval = setInterval(() => {
+      seconds--;
+      const t = document.getElementById('resend-timer');
+      if (t) t.textContent = seconds;
+      if (seconds <= 0) {
+        clearInterval(interval);
+        resendBtn.disabled = false;
+        resendBtn.textContent = 'Отправить снова';
+      }
+    }, 1000);
+  }
+
+  startResendTimer();
+
+  /* ── RESEND ── */
+  document.getElementById('resend-btn').addEventListener('click', async () => {
+    clearAlert();
+    try {
+      const res = await fetch('/auth/resend_verification_code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ id: user.id, email: user.email }),
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      saveUser({ ...user, ...data });
+      startResendTimer();
+      showToast('Код отправлен повторно', 'success');
+    } catch {
+      showToast('Не удалось отправить код', 'error');
+    }
+  });
+
+  /* ── СМЕНА ПОЧТЫ ── */
+  const changeForm    = document.getElementById('change-email-form');
+  const toggleBtn     = document.getElementById('toggle-change-btn');
+  const cancelBtn     = document.getElementById('cancel-change-btn');
+  const saveEmailBtn  = document.getElementById('save-email-btn');
+  const newEmailInput = document.getElementById('new-email-input');
+
+  toggleBtn.addEventListener('click', () => {
+    changeForm.classList.add('open');
+    toggleBtn.style.display = 'none';
+    clearAlert();
+  });
+
+  cancelBtn.addEventListener('click', () => {
+    changeForm.classList.remove('open');
+    toggleBtn.style.display = '';
+    newEmailInput.value = '';
+    clearAlert();
+  });
+
+  saveEmailBtn.addEventListener('click', async () => {
+    const newEmail = newEmailInput.value.trim();
+    if (!newEmail) return showAlert('Введите новую почту');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) return showAlert('Введите корректный email');
+    if (newEmail === user.email) return showAlert('Это та же почта');
+    clearAlert();
+
+    saveEmailBtn.disabled = true;
+    saveEmailBtn.textContent = 'Сохранение...';
+    try {
+      const res = await fetch('/auth/update_email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ id: user.id, email: user.email, new_email: newEmail }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        showAlert(data.detail || 'Не удалось сменить почту');
+        return;
+      }
+      const data = await res.json();
+      // Обновляем user с новой почтой
+      const updated = { ...user, ...data };
+      saveUser(updated);
+      Object.assign(user, updated);
+
+      emailEl.textContent = user.email;
+      changeForm.classList.remove('open');
+      toggleBtn.style.display = '';
+      newEmailInput.value = '';
+      showToast('Почта обновлена', 'success');
+      // Перезапускаем таймер — новый код отправлен на новую почту
+      startResendTimer();
+    } catch {
+      showAlert('Ошибка сети. Попробуйте позже');
+    } finally {
+      saveEmailBtn.disabled = false;
+      saveEmailBtn.textContent = 'Сохранить';
+    }
+  });
+
+  /* ── ВЕРИФИКАЦИЯ ── */
+  const verifyBtn = document.getElementById('verify-btn');
+  const codeInput = document.getElementById('verify-code');
+
+  // Только цифры
+  codeInput.addEventListener('input', () => {
+    codeInput.value = codeInput.value.replace(/\D/g, '');
+  });
+
+  codeInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') verifyBtn.click();
+  });
+
+  verifyBtn.addEventListener('click', async () => {
+    const token = codeInput.value.trim();
+    if (!token) return showAlert('Введите код из письма');
+    if (token.length < 4) return showAlert('Код слишком короткий');
+    clearAlert();
+
+    verifyBtn.disabled = true;
+    verifyBtn.textContent = 'Проверяем...';
+
+    try {
+      const res = await fetch('/auth/verify_mail', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ id: user.id, email: user.email, token }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        const detail = typeof data.detail === 'string' ? data.detail.toLowerCase() : '';
+        if (detail.includes('invalid') || detail.includes('incorrect') || detail.includes('wrong')) {
+          showAlert('Неверный код — проверьте письмо и попробуйте снова');
+        } else if (detail.includes('expired')) {
+          showAlert('Код устарел — запросите новый');
+        } else {
+          showAlert(data.detail || 'Ошибка подтверждения');
+        }
+        return;
+      }
+
+      const data = await res.json();
+      // Обновляем сессию — is_verified теперь true
+      saveUser({ ...user, ...data });
+      showToast('Почта подтверждена!', 'success');
+      setTimeout(() => { window.location.href = 'workshop.html'; }, 800);
+
+    } catch {
+      showAlert('Ошибка сети. Попробуйте позже');
+    } finally {
+      verifyBtn.disabled = false;
+      verifyBtn.textContent = 'Подтвердить';
+    }
+  });
+
+});
+</script>
+</body>
+</html>

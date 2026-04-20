@@ -22,7 +22,9 @@ PUBLIC_ROUTES = {
     "/image/fav.png",
     "/auth/verify_mail",
     "/auth/update_email",
-    "/auth//resend_verification_code"
+    "/auth//resend_verification_code",
+    "/verify.html"
+    
 }
 
 
