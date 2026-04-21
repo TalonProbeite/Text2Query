@@ -25,7 +25,14 @@ class RedisSettings(BaseModel):
     url:str
 
 class DatabaseSettings(BaseModel):
-    url: str
+    DATABASE_HOST:str
+    DATABASE_USER:str
+    DATABASE_PASSWORD:str
+    DATABASE_NAME:str
+
+    @property
+    def url(self):
+        return f"postgresql+asyncpg://{self.DATABASE_USER}:{self.DATABASE_PASSWORD}@{self.DATABASE_HOST}/{self.DATABASE_NAME}?ssl=require"
 
 class MailSettings(BaseModel):
     MAIL_USERNAME:str
