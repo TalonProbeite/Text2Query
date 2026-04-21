@@ -31,7 +31,7 @@ class DatabaseSettings(BaseModel):
     DATABASE_NAME:str
 
     @property
-    def url(self):
+    def url(self)->str:
         return f"postgresql+asyncpg://{self.DATABASE_USER}:{self.DATABASE_PASSWORD}@{self.DATABASE_HOST}/{self.DATABASE_NAME}?ssl=require"
 
 class MailSettings(BaseModel):
@@ -47,7 +47,7 @@ class MailSettings(BaseModel):
     VALIDATE_CERTS:bool = True
 
     @property
-    def config(self):
+    def config(self) -> ConnectionConfig:
         return  ConnectionConfig(
             MAIL_USERNAME=self.MAIL_USERNAME,
             MAIL_PASSWORD=self.MAIL_PASSWORD, 
