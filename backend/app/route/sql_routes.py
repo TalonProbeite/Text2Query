@@ -21,9 +21,13 @@ async def get_sql(user_data: UserPrompt ,
                   llm: LlmService = Depends(get_llm_service),
                   db:AsyncSession = Depends(get_db)):
     try:
-        raw = await redis.get(f"session:user_{request.state.user_id}")
+        if user_data.db_id != 0:
+            raw = await redis.get(f"session:user_{request.state.user_id}:db_{user_data.db_id}")
+        else:
+            raw = None
         if raw:
-            db_struct = json.loads(raw)
+            data = json.loads(raw)
+            db_struct = json.loads(data["struct"])
         else:
             db_struct = ""
         resp = await llm.get_query(input_text=user_data.prompt, sql_type=user_data.sql_type , full_context=db_struct)

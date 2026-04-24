@@ -10,7 +10,7 @@ from app.repositories.users_repo import UserRepository
 from app.core.exceptions import InvalidPassword , UserNotFound ,UserBannedError , JWTTokenDecodeError , JWTTokenGenerateError, UserAlreadyExists , IncorrectVerificationTokenError , VerificationTokenExpireError
 from app.utils.jwt import encode_jwt
 from app.utils.mail_utils import send_email_async , generate_verification_code , get_html_verify_message
-
+from app.db.redis import redis
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
@@ -90,12 +90,13 @@ async def signup(user_data:UserRegister,db:AsyncSession = Depends(get_db)):
 
 
 @router.post("/logout")
-async def logout(response: Response):
+async def logout(response: Response , request:Request):
     try:
         response.delete_cookie(
             key="access_token",
             path="/"
         )
+        await redis.delete(f"session:user_{request.state.user_id}:*")
         return {"success":True}
     except Exception as e:
         logger.info(f"error on exit:{e.__cause__}") 
