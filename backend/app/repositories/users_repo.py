@@ -5,7 +5,7 @@ from datetime import datetime , timezone , timedelta
 
 from app.models.users import User
 from app.utils.pas_hashing import get_hash_pass , match_password
-from app.core.exceptions import InvalidPassword , UserAlreadyExists , UserNotFound , UserBannedError , VerificationTokenExpireError  , IncorrectVerificationTokenError , UserAlreadyVerifiedError
+from app.core.exceptions import InvalidPassword , UserAlreadyExists , UserNotFound , UserBannedError , VerificationTokenExpireError  , IncorrectVerificationTokenError , UserAlreadyVerifiedError , UserNotVerefiedError
 
 
 
@@ -50,6 +50,8 @@ class UserRepository:
             raise UserNotFound()
         if not user.is_active:
             raise UserBannedError()
+        if not user.is_verified:
+            raise UserNotVerefiedError()
 
         try:
             match_password(user.hashed_password, password)

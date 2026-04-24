@@ -7,7 +7,7 @@ from fastapi_mail import  MessageSchema , MessageType
 from app.schemas.auth import AuthResponse , UserLogIn , UserRegister , VerificationResponse , GetToken  , SetMail
 from app.db.database import get_db
 from app.repositories.users_repo import UserRepository
-from app.core.exceptions import InvalidPassword , UserNotFound ,UserBannedError , JWTTokenDecodeError , JWTTokenGenerateError, UserAlreadyExists , IncorrectVerificationTokenError , VerificationTokenExpireError
+from app.core.exceptions import InvalidPassword , UserNotFound ,UserBannedError , JWTTokenDecodeError , JWTTokenGenerateError, UserAlreadyExists , IncorrectVerificationTokenError , VerificationTokenExpireError  , UserNotVerefiedError
 from app.utils.jwt import encode_jwt
 from app.utils.mail_utils import send_email_async , generate_verification_code , get_html_verify_message
 from app.db.redis import redis
@@ -54,6 +54,10 @@ async def login(user_data:UserLogIn ,response: Response, db:AsyncSession = Depen
         logger.info(f"User is banned:{e.__cause__}")
         raise HTTPException(status_code=403, 
                             detail="Access denied!")
+    except UserNotVerefiedError as e:
+        logger.info(f"User is banned:{e.__cause__}")
+        raise HTTPException(status_code=403, 
+                            detail="Confirm your email!")
     except (JWTTokenGenerateError, JWTTokenDecodeError):
         logger.error("Error creating jwt token")
         raise HTTPException(status_code=500, detail="Internal server error")
