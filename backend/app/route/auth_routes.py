@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException , Response , Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
 from datetime import datetime, timezone, timedelta
-from fastapi_mail import  MessageSchema , MessageType
+import secrets
 
 from app.schemas.auth import AuthResponse , UserLogIn , UserRegister , VerificationResponse , GetToken  , SetMail
 from app.db.database import get_db
@@ -20,11 +20,12 @@ async def login(user_data:UserLogIn ,response: Response, db:AsyncSession = Depen
     repo = UserRepository(db)
     try:
         user_model = await repo.user_login(**user_data.model_dump())
+        refresh = secrets.token_urlsafe(32)
+        await redis.set(f"refresh:{refresh}", user_model.id, ex=604800)
         token = encode_jwt({
             "sub": str(user_model.id),
-            "email": user_model.email,
             "iat": datetime.now(timezone.utc),
-            "exp": datetime.now(timezone.utc) + timedelta(hours=8)
+            "exp": datetime.now(timezone.utc) + timedelta(minutes=15)
         })
 
         response.set_cookie(
@@ -33,7 +34,15 @@ async def login(user_data:UserLogIn ,response: Response, db:AsyncSession = Depen
             httponly=True,
             secure=True,
             samesite="strict",
-            max_age=60 * 60 * 8
+            max_age=900
+        )
+        response.set_cookie(
+            key="refresh_token",
+            value=refresh,
+            httponly=True,
+            secure=True,
+            samesite="strict",
+            max_age=604_800
         )
         return AuthResponse(
             id=user_model.id,
@@ -96,11 +105,30 @@ async def signup(user_data:UserRegister,db:AsyncSession = Depends(get_db)):
 @router.post("/logout")
 async def logout(response: Response , request:Request):
     try:
+        refresh_tokens = request.cookies.get("refresh_token")
+        pattern = f"session:user_{request.state.user_id}:*"
+        keys_to_delete = []
+        async for key in redis.scan_iter(match=pattern):
+            keys_to_delete.append(key)
+            
+            if len(keys_to_delete) >= 500:
+                await redis.delete(*keys_to_delete)
+                keys_to_delete = []
+                
+        if keys_to_delete:
+            await redis.delete(*keys_to_delete)
+            
+        await redis.delete(f"refresh:{refresh_tokens}")
         response.delete_cookie(
             key="access_token",
             path="/"
         )
-        await redis.delete(f"session:user_{request.state.user_id}:*")
+        response.delete_cookie(
+            key="refresh_token",
+            path="/",
+            secure=True,
+            samesite="strict"
+        )
         return {"success":True}
     except Exception as e:
         logger.info(f"error on exit:{e.__cause__}") 
@@ -135,21 +163,31 @@ async def verify_mail(user_data: VerificationResponse , response:Response, db: A
             if not user.email == user_data.email:
                 raise UserNotFound()
             await repo.set_verefi(user_id=user_data.id)
+            refresh = secrets.token_urlsafe(32)
+            await redis.set(f"refresh:{refresh}", user_data.id, ex=604800)
             token = encode_jwt({
             "sub": str(user.id),
             "email": user.email,
             "iat": datetime.now(timezone.utc),
-            "exp": datetime.now(timezone.utc) + timedelta(hours=8)
+            "exp": datetime.now(timezone.utc) + timedelta(minutes=15)
             })
 
             response.set_cookie(
-                key="access_token",
-                value=token,
-                httponly=True,
-                secure=True,
-                samesite="strict",
-                max_age=60 * 60 * 8
-            ) 
+            key="access_token",
+            value=token,
+            httponly=True,
+            secure=True,
+            samesite="strict",
+            max_age=900
+             )
+            response.set_cookie(
+            key="refresh_token",
+            value=refresh,
+            httponly=True,
+            secure=True,
+            samesite="strict",
+            max_age=604_800
+            )
             return AuthResponse(
             id=user.id,
             name=user.name,
@@ -231,3 +269,44 @@ async def update_email(user_data:SetMail, db:AsyncSession= Depends(get_db)):
     except Exception as e:
         logger.warning(f"Unknown error when trying to confirm verification: {e.__cause__}")
         raise HTTPException(status_code=500)
+    
+
+@router.post("/refresh")
+async def refrech_token(request:Request , response:Response):
+    try:
+        refresh_token = request.cookies.get("refresh_token")
+        if not refresh_token:
+            raise HTTPException(status_code=401)
+        refrech_redis = await redis.get(f"refresh:{refresh_token}")
+        if not refrech_redis:
+            raise HTTPException(status_code=401 , detail="Unauthorized")
+        refrech_redis = refrech_redis.decode()
+        token = encode_jwt({
+            "sub": str(refrech_redis),
+            "iat": datetime.now(timezone.utc),
+            "exp": datetime.now(timezone.utc) + timedelta(minutes=15)
+        })
+        refresh = secrets.token_urlsafe(32)
+        await redis.delete(f"refresh:{refresh_token}")
+        await redis.set(f"refresh:{refresh}", refrech_redis, ex=604_800 )
+        response.set_cookie(
+            key="access_token",
+            value=token,
+            httponly=True,
+            secure=True,
+            samesite="strict",
+            max_age=900
+        )
+        response.set_cookie(
+            key="refresh_token",
+            value=refresh,
+            httponly=True,
+            secure=True,
+            samesite="strict",
+            max_age=604_800
+            )
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.warning(f"Unknown error: {e}")
