@@ -48,7 +48,7 @@ async def connect_db(db_data:DbConnectCreat, request: Request , db:AsyncSession=
         logger.exception(f'Error connecting to user database:')
         raise HTTPException(status_code=500)
     finally:
-        if service.engine:
+        if service and service.engine:
             await service.disconnect()
 
     
@@ -85,7 +85,7 @@ async def execute_query(db_data:DbExecute, request: Request):
         logger.info(f'Error connecting to user database: {e.__cause__}')
         raise HTTPException(status_code=500)   
     finally:
-        if service.engine:
+        if service and service.engine:
             await service.disconnect()
 
 
@@ -128,7 +128,7 @@ async def start_session(user_credentials:StartSessionDb , request:Request ,db:As
                                                                         "struct": json.dumps(db_struct),
                                                                         "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")}), ex=28800)
     
-        return {"success":True}
+        return DbConnectResponse(id=db_config.id, db_alias=db_config.database_alias)
     except HTTPException:
         raise
     except (DBConnectionError, DBQueryError) as e:
@@ -138,5 +138,5 @@ async def start_session(user_credentials:StartSessionDb , request:Request ,db:As
         logger.exception(f'Error connecting to user database: {e.__cause__}')
         raise HTTPException(status_code=500)   
     finally:
-        if service.engine:
+        if service and service.engine:
             await service.disconnect()

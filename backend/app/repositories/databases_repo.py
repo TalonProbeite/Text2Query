@@ -39,7 +39,7 @@ class DatabaseRepository:
         return user_db
     
     async def delete_by_id(self, db_id):
-        result = self.db.execute(delete(Database).where(Database.id == db_id))
+        result = await self.db.execute(delete(Database).where(Database.id == db_id))
         await self.db.commit()
         return result
     
