@@ -40,7 +40,9 @@ async def connect_db(db_data:DbConnectCreat, request: Request , db:AsyncSession=
                                                                         "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")}), ex=28800)
         
         return DbConnectResponse(id= user_db.id,
-                                 db_alias=user_db.database_alias)
+                                 db_alias=user_db.database_alias,
+                                 db_name=user_db.user_db.database_name,
+                                 is_active=True)
     except (DBConnectionError, DBQueryError) as e:
         logger.exception(f"Connection to user database failed: {e.__cause__}")
         raise HTTPException(status_code=400 , detail="Connection to user database failed")
@@ -95,7 +97,16 @@ async def get_users_db(request: Request , db:AsyncSession= Depends(get_db)):
     try:
         user_id = request.state.user_id
         dbs = await repo.get_user_dbs(user_id=user_id)
-        return dbs
+        result = []
+        for el in dbs:
+            db_conf = await redis.get(f"session:user_{request.state.user_id}:db_{el.id}")
+            if db_conf:
+                is_active = True
+            else:
+                is_active = False
+
+            result.append(DbConnectResponse(id=el.id , db_alias=el.database_alias ,db_name=el.database_name ,is_active=is_active))
+        return result
     except Exception as e:
         logger.info(f'Error connecting to user database: {e.__cause__}')
         raise HTTPException(status_code=500) 
@@ -128,7 +139,7 @@ async def start_session(user_credentials:StartSessionDb , request:Request ,db:As
                                                                         "struct": json.dumps(db_struct),
                                                                         "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")}), ex=28800)
     
-        return DbConnectResponse(id=db_config.id, db_alias=db_config.database_alias)
+        return DbConnectResponse(id=db_config.id, db_alias=db_config.database_alias, db_name=db_config.database_name,is_active=True)
     except HTTPException:
         raise
     except (DBConnectionError, DBQueryError) as e:

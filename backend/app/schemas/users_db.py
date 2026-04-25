@@ -22,6 +22,8 @@ class DbExecute(BaseModel):
 class DbConnectResponse(BaseModel):
     id:int
     db_alias:str
+    db_name:str
+    is_active:bool
 
 
 class StartSessionDb(BaseModel):
