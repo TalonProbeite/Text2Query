@@ -14,13 +14,14 @@ from app.middleware.logging import LoggingMiddleware
 from app.route.sql_routes import router as sql_router
 from app.route.history_routes import router as history_router
 from app.route.db_routs import router as user_db_router
+from app.db.redis import redis
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
     setup_logging()
     yield
-    pass
+    await redis.aclose()
     
 
 app = FastAPI(
