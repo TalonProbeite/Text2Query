@@ -59,19 +59,99 @@ const auth = {
   },
 };
 
-/* ── GLOBAL 401/403 INTERCEPTOR ─────────────────────────── */
+/* ── NAVIGATE TO WORKSHOP WITH AUTH CHECK ───────────────── */
+async function goToWorkshop() {
+  try {
+    const res = await fetch('/auth/me', {
+      method: 'GET',
+      credentials: 'include',
+    });
+    if (res.ok) {
+      const data = await res.json().catch(() => ({}));
+      if (data.is_logged) { window.location.href = 'workshop.html'; return; }
+    }
+    if (res.status === 401) {
+      // Пробуем refresh
+      const refreshRes = await fetch('/auth/refresh', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const refreshData = await refreshRes.json().catch(() => ({}));
+      if (refreshData.success) {
+        window.location.href = 'workshop.html';
+        return;
+      }
+    }
+  } catch {}
+  // Не получилось — на авторизацию
+  window.location.href = 'auth.html';
+}
+
+/* ── GLOBAL 401 INTERCEPTOR WITH TOKEN REFRESH ──────────── */
 (function() {
   const _fetch = window.fetch;
+
+  // Публичные маршруты — не трогаем, не рефрешим
+  const PUBLIC = new Set([
+    '/auth/login', '/auth/signup', '/auth/refresh', '/auth/me',
+    '/auth/verify_mail', '/auth/update_email',
+    '/auth//resend_verification_code',
+  ]);
+
+  let isRefreshing = false;
+  // Очередь промисов ожидающих рефреш
+  let refreshQueue = [];
+
+  function processQueue(success) {
+    refreshQueue.forEach(({ resolve, reject }) => success ? resolve() : reject());
+    refreshQueue = [];
+  }
+
+  async function tryRefresh() {
+    const res = await _fetch('/auth/refresh', {
+      method: 'POST',
+      credentials: 'include',
+    });
+    if (!res.ok) return false;
+    const data = await res.json().catch(() => ({}));
+    return data.success === true;
+  }
+
   window.fetch = async function(...args) {
-    const res = await _fetch(...args);
     const url = args[0].toString();
-    if ((res.status === 401 || res.status === 403) && !url.includes('/auth/')) {
-      const data = await res.clone().json().catch(() => ({}));
-      const msg = data.detail || 'Сессия истекла';
-      sessionStorage.setItem('auth_error', msg);
-      auth.logout();
+    const isPublic = PUBLIC.has(url) || url.includes('/auth/login') || url.includes('/auth/signup');
+
+    const res = await _fetch(...args);
+
+    if (res.status !== 401 || isPublic) return res;
+
+    // Получили 401 на защищённом маршруте — пробуем рефреш
+    if (isRefreshing) {
+      // Уже рефрешим — ставим в очередь и ждём
+      return new Promise((resolve, reject) => {
+        refreshQueue.push({
+          resolve: async () => resolve(await _fetch(...args)),
+          reject:  () => reject(new Error('Session expired')),
+        });
+      });
     }
-    return res;
+
+    isRefreshing = true;
+    const refreshed = await tryRefresh().catch(() => false);
+    isRefreshing = false;
+
+    if (refreshed) {
+      processQueue(true);
+      // Повторяем оригинальный запрос с обновлёнными куками
+      return _fetch(...args);
+    } else {
+      processQueue(false);
+      // Рефреш не помог — сессия мертва, логаут
+      const data = await res.clone().json().catch(() => ({}));
+      sessionStorage.setItem('auth_error', data.detail || 'Сессия истекла');
+      auth.logout();
+      return res;
+    }
   };
 })();
 

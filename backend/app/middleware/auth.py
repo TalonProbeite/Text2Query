@@ -23,7 +23,8 @@ PUBLIC_ROUTES = {
     "/auth/verify_mail",
     "/auth/update_email",
     "/auth//resend_verification_code",
-    "/verify.html"
+    "/verify.html",
+    "/auth/refresh"
     
 }
 

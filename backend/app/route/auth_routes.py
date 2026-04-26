@@ -272,7 +272,7 @@ async def update_email(user_data:SetMail, db:AsyncSession= Depends(get_db)):
     
 
 @router.post("/refresh")
-async def refrech_token(request:Request , response:Response):
+async def refrech_token(request:Request , response:Response , db:AsyncSession = Depends(get_db)):
     try:
         refresh_token = request.cookies.get("refresh_token")
         if not refresh_token:
@@ -281,6 +281,10 @@ async def refrech_token(request:Request , response:Response):
         if not refrech_redis:
             raise HTTPException(status_code=401 , detail="Unauthorized")
         refrech_redis = refrech_redis.decode()
+        repo = UserRepository(db)
+        user = await repo.get_by_id(refrech_redis)
+        if not user.is_active:
+            raise UserBannedError()
         token = encode_jwt({
             "sub": str(refrech_redis),
             "iat": datetime.now(timezone.utc),
@@ -308,5 +312,8 @@ async def refrech_token(request:Request , response:Response):
         return {"success": True}
     except HTTPException:
         raise
+    except UserBannedError:
+        logger.info("User is banned!")
+        raise HTTPException(status_code=403 , detail="Access denied!")
     except Exception as e:
         logger.warning(f"Unknown error: {e}")

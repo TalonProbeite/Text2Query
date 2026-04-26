@@ -281,7 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Если уже верифицирован — сразу в мастерскую
   if (user.is_verified) {
-    window.location.href = 'workshop.html';
+    goToWorkshop();
     return;
   }
 
@@ -449,7 +449,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // Обновляем сессию — is_verified теперь true
       saveUser({ ...user, ...data });
       showToast('Почта подтверждена!', 'success');
-      setTimeout(() => { window.location.href = 'workshop.html'; }, 800);
+      setTimeout(() => { goToWorkshop(); }, 800);
 
     } catch {
       showAlert('Ошибка сети. Попробуйте позже');

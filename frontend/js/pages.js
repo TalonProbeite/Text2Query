@@ -28,7 +28,7 @@ function initIndex() {
             <div class="navbar-user-plan">${me.plan || 'free'}</div>
           </div>
         </div>
-        <a class="btn btn-primary btn-sm" href="workshop.html">Мастерская →</a>
+        <button class="btn btn-primary btn-sm" onclick="goToWorkshop()">Мастерская →</button>
       `;
     } else {
       // Токен просрочен или невалиден — чистим localStorage
@@ -75,7 +75,7 @@ function initAuth() {
   // Проверяем через сервер — localStorage врать может (просроченный токен)
   api.getMe().then(me => {
     if (me.is_logged) {
-      window.location.href = 'workshop.html';
+      goToWorkshop();
     } else {
       // Токен невалиден — чистим localStorage
       localStorage.removeItem('sqlcraft_user');
@@ -126,7 +126,7 @@ function initAuth() {
     try {
       const { user } = await api.login(email, pass);
       auth.setSession(user);
-      window.location.href = 'workshop.html';
+      goToWorkshop();
     } catch (err) {
       showAlert('login', err.msg || err.message || 'Неизвестная ошибка');
     } finally {
