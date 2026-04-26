@@ -25,7 +25,14 @@ class RedisSettings(BaseModel):
     url:str
 
 class DatabaseSettings(BaseModel):
-    url: str
+    DATABASE_HOST:str
+    DATABASE_USER:str
+    DATABASE_PASSWORD:str
+    DATABASE_NAME:str
+
+    @property
+    def url(self)->str:
+        return f"postgresql+asyncpg://{self.DATABASE_USER}:{self.DATABASE_PASSWORD}@{self.DATABASE_HOST}/{self.DATABASE_NAME}?ssl=require"
 
 class MailSettings(BaseModel):
     MAIL_USERNAME:str
@@ -40,7 +47,7 @@ class MailSettings(BaseModel):
     VALIDATE_CERTS:bool = True
 
     @property
-    def config(self):
+    def config(self) -> ConnectionConfig:
         return  ConnectionConfig(
             MAIL_USERNAME=self.MAIL_USERNAME,
             MAIL_PASSWORD=self.MAIL_PASSWORD, 
@@ -58,6 +65,8 @@ class LLMSettings(BaseModel):
     base_url: str = "https://api.groq.com/openai/v1"
     model: str = "llama-3.3-70b-versatile"
 
+class CryptoSettings(BaseModel):
+    key:str
 
 class Settings(BaseSettings):
     app_name: str = "SQLCraft"
@@ -75,6 +84,7 @@ class Settings(BaseSettings):
     llm: LLMSettings
     redis:RedisSettings
     mail:MailSettings
+    crypto: CryptoSettings
 
     model_config = SettingsConfigDict(env_file=".env", env_nested_delimiter="__")
 

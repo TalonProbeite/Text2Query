@@ -103,34 +103,25 @@ const api = {
     return { query: data.query, is_danger: data.is_danger };
   },
 
-  async executeSQL(sql, dbConfig) {
+  async executeSQL(sql, dbId) {
     const res = await fetch('/user_db/execute_query', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({
-        host:     dbConfig.host,
-        port:     parseInt(dbConfig.port),
-        db_name:  dbConfig.db_name,
-        username: dbConfig.username,
-        password: dbConfig.password,
-        db_type:  dbConfig.db_type,
-        query:    sql,
-      }),
+      body: JSON.stringify({ id: dbId, query: sql }),
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      if (res.status === 400) throw { msg: data.detail || 'Ошибка подключения или выполнения запроса' };
+      if (res.status === 400) throw { msg: data.detail || 'Ошибка выполнения запроса' };
       throw { msg: 'Ошибка сервера при выполнении запроса' };
     }
-    const rows = await res.json(); // list[dict]
-    if (!rows.length) return { columns: [], rows: [], rowCount: 0, execMs: 0 };
+    const rows = await res.json();
+    if (!Array.isArray(rows) || !rows.length) return { columns: [], rows: [], rowCount: 0 };
     const columns = Object.keys(rows[0]);
     return {
       columns,
       rows: rows.map(r => columns.map(c => r[c] ?? null)),
       rowCount: rows.length,
-      execMs: 0,
     };
   },
 
@@ -149,12 +140,14 @@ const api = {
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify({
-        host:     config.host,
-        port:     parseInt(config.port),
-        db_name:  config.db_name,
-        username: config.username,
-        password: config.password,
-        db_type:  config.db_type,
+        host:            config.host,
+        port:            parseInt(config.port),
+        database_name:   config.database_name,
+        database_alias:  config.database_alias,
+        db_username:     config.db_username,
+        password:        config.password,
+        dialect:         config.dialect,
+        ssl:             config.ssl,
       }),
     });
     if (!res.ok) {
@@ -162,7 +155,36 @@ const api = {
       if (res.status === 400) throw new Error(data.detail || 'Не удалось подключиться к БД');
       throw new Error('Ошибка сервера при подключении');
     }
-    return await res.json(); // {success: true}
+    return await res.json(); // DbConnectResponse {id, db_alias, db_name, is_active}
+  },
+
+  async getUserDBs() {
+    const res = await fetch('/user_db/get_users_db', {
+      method: 'GET',
+      credentials: 'include',
+    });
+    if (!res.ok) throw { msg: 'Не удалось загрузить базы данных' };
+    return res.json(); // list[DbConnectResponse]
+  },
+
+  async startSession(dbId, password) {
+    const res = await fetch('/user_db/start_session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ id: dbId, password }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 400) throw new Error(data.detail || 'Неверный пароль или ошибка подключения');
+      throw new Error('Ошибка сервера');
+    }
+    return res.json();
+  },
+
+  async deleteDB(dbId) {
+    // заглушка — ручка ещё не реализована
+    return { success: true };
   },
 
   async login(email, password) {

@@ -12,7 +12,7 @@ DRIVERS = {
 class ConnectionDbService:
 
     def __init__(self, connection_data: dict, ) -> None:
-        self.dialect = connection_data.get("db_type")
+        self.dialect = connection_data.get("dialect")
         self.connection_data = connection_data
         self.engine = None
 
@@ -22,7 +22,7 @@ class ConnectionDbService:
             raise DBConnectionError(f"Unsupported db type: {self.dialect}")
         
         d = self.connection_data
-        return f"{driver}://{d['username']}:{d['password']}@{d['host']}:{d['port']}/{d['db_name']}"
+        return f"{driver}://{d['db_username']}:{d['password']}@{d['host']}:{d['port']}/{d['database_name']}"
 
     async def connect(self) -> None:
         try:
@@ -84,7 +84,7 @@ class ConnectionDbService:
                             AND c.TABLE_NAME = k.TABLE_NAME 
                             AND c.COLUMN_NAME = k.COLUMN_NAME
                         WHERE 
-                            c.TABLE_SCHEMA = '{self.connection_data['db_name']}'
+                            c.TABLE_SCHEMA = '{self.connection_data['db_username']}'
                         ORDER BY 
                             c.TABLE_NAME, c.ORDINAL_POSITION;""",
             "mysql":f"""SELECT 
@@ -102,7 +102,7 @@ class ConnectionDbService:
                             AND c.TABLE_NAME = k.TABLE_NAME 
                             AND c.COLUMN_NAME = k.COLUMN_NAME
                         WHERE 
-                            c.TABLE_SCHEMA = '{self.connection_data['db_name']}'
+                            c.TABLE_SCHEMA = '{self.connection_data['db_username']}'
                         ORDER BY 
                             c.TABLE_NAME, c.ORDINAL_POSITION;"""
         }

@@ -9,5 +9,6 @@ class SqlResponse(BaseModel):
 
 
 class UserPrompt(BaseModel):
+        db_id:int = Field(default=0)
         prompt :str = Field(... , min_length=5 , max_length=500)
         sql_type:str = Field(...  , max_length=10)

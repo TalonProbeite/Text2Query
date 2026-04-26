@@ -10,3 +10,4 @@ class DBQueryError(Exception):pass
 class VerificationTokenExpireError(Exception):pass
 class IncorrectVerificationTokenError(Exception): pass
 class UserAlreadyVerifiedError(Exception): pass
+class UserNotVerefiedError(Exception): pass
