@@ -164,59 +164,208 @@ function initWorkshop() {
   if (!auth.requireAuth()) return;
   document.body.style.visibility = 'visible';
 
-  // User card — берём реальные данные с сервера
+  // User card
   api.getMe().then(me => {
     if (!me.is_logged) return;
     const nameEl   = document.getElementById('user-name');
     const planEl   = document.getElementById('user-plan');
     const avatarEl = document.getElementById('user-avatar');
-    if (nameEl)   nameEl.textContent   = me.name || me.email || '';
+    if (nameEl)   nameEl.textContent   = me.name || '';
     if (planEl)   planEl.textContent   = me.plan || 'free';
     if (avatarEl) avatarEl.textContent = (me.name || '?')[0].toUpperCase();
   }).catch(() => {});
 
-  let currentSQL     = '';
-  let lastResults    = null;
-  // Multi-DB state
-  const connectedDBs = [];
-  let activeDBId = null;
-  function hasActiveDB() { return activeDBId !== null; }
+  let currentSQL  = '';
+  let lastResults = null;
+  let activeDBId  = null;   // id БД (из DbConnectResponse)
+  let dbs         = [];     // список DbConnectResponse
 
-  // Dialect
+  const promptTextarea = document.getElementById('prompt-textarea');
+  const generateBtn    = document.getElementById('generate-btn');
+  const sqlEditor      = document.getElementById('sql-output-body');
+  const execBtn        = document.getElementById('exec-sql-btn');
+  const executeSection = document.getElementById('execute-section');
+  const resultsSection = document.getElementById('results-section');
+
+  function getActiveDB() { return dbs.find(d => d.id === activeDBId) || null; }
+
+  /* ── DIALECT ── */
   const dialectBtn  = document.getElementById('dialect-btn');
   const dialectDrop = document.getElementById('dialect-dropdown');
   const dialect = dialectBtn && dialectDrop ? new DialectSelector(dialectBtn, dialectDrop) : null;
 
-  // Elements
-  const resultsSection = document.getElementById('results-section');
-  const executeSection = document.getElementById('execute-section');
-  const execBtn        = document.getElementById('exec-sql-btn');
-  const promptTextarea = document.getElementById('prompt-textarea');
-  const generateBtn    = document.getElementById('generate-btn');
-  const sqlEditor      = document.getElementById('sql-output-body');
+  /* ── DB LIST ── */
+  function renderDBList() {
+    const list = document.getElementById('db-list');
+    const label = document.getElementById('active-db-label');
+    if (!list) return;
 
-  /* ── HISTORY ──────────────────────────────────────────── */
+    if (dbs.length === 0) {
+      list.innerHTML = '<div style="font-size:12px; font-family:var(--font-mono); color:var(--text-dim); padding:6px 2px;">Нет подключений</div>';
+      if (label) label.textContent = 'База данных не выбрана';
+      return;
+    }
+
+    list.innerHTML = dbs.map(db => {
+      const isSelected = db.id === activeDBId;
+      const dot = db.is_active
+        ? '<span class="db-status-dot active"></span>'
+        : '<span class="db-status-dot inactive"></span>';
+      const sessionBanner = !db.is_active ? `
+        <div class="db-session-banner">
+          <span>Сессия не активна</span>
+          <button onclick="event.stopPropagation(); openSessionModal(${db.id}, '${db.db_alias}')">Активировать</button>
+        </div>` : '';
+      return `
+        <div class="db-item ${isSelected ? 'selected' : ''}" onclick="selectDB(${db.id})">
+          <div class="db-item-row">
+            ${dot}
+            <div class="db-item-info">
+              <div class="db-item-alias">${db.db_alias}</div>
+              <div class="db-item-meta">${db.db_name}</div>
+            </div>
+            <div class="db-item-actions">
+              <button class="db-action-btn danger" title="Удалить"
+                onclick="event.stopPropagation(); deleteDB(${db.id})">✕</button>
+            </div>
+          </div>
+          ${sessionBanner}
+        </div>`;
+    }).join('');
+
+    const active = getActiveDB();
+    if (label) label.textContent = active
+      ? `${active.db_alias} ${active.is_active ? '· активна' : '· нет сессии'}`
+      : 'База данных не выбрана';
+  }
+
+  window.selectDB = function(id) {
+    activeDBId = id;
+    renderDBList();
+  };
+
+  window.deleteDB = async function(id) {
+    if (!confirm('Удалить эту базу данных?')) return;
+    try {
+      await api.deleteDB(id);
+      dbs = dbs.filter(d => d.id !== id);
+      if (activeDBId === id) activeDBId = dbs.length ? dbs[0].id : null;
+      renderDBList();
+      showToast('БД удалена', 'info');
+    } catch {
+      showToast('Не удалось удалить БД', 'error');
+    }
+  };
+
+  /* ── SESSION MODAL ── */
+  let pendingSessionId = null;
+  const sessionModal = document.getElementById('session-modal');
+
+  window.openSessionModal = function(dbId, alias) {
+    pendingSessionId = dbId;
+    const nameEl = document.getElementById('session-db-name');
+    if (nameEl) nameEl.textContent = alias;
+    const passEl = document.getElementById('session-password');
+    if (passEl) passEl.value = '';
+    sessionModal?.classList.add('open');
+  };
+  window.closeSessionModal = function() {
+    sessionModal?.classList.remove('open');
+    pendingSessionId = null;
+  };
+
+  document.getElementById('session-submit')?.addEventListener('click', async () => {
+    const pass = document.getElementById('session-password')?.value;
+    if (!pass) return showToast('Введите пароль', 'error');
+    const btn = document.getElementById('session-submit');
+    btn.disabled = true; btn.textContent = 'Подключение...';
+    try {
+      await api.startSession(pendingSessionId, pass);
+      // Обновляем is_active у нужной БД
+      const db = dbs.find(d => d.id === pendingSessionId);
+      if (db) db.is_active = true;
+      renderDBList();
+      closeSessionModal();
+      showToast('Сессия активирована', 'success');
+    } catch (err) {
+      showToast(err.message || 'Ошибка активации', 'error');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Активировать';
+    }
+  });
+
+  /* ── ADD DB MODAL ── */
+  const dbModal = document.getElementById('db-modal');
+  window.openDBModal  = () => dbModal?.classList.add('open');
+  window.closeDBModal = () => dbModal?.classList.remove('open');
+
+  document.getElementById('db-connect-btn')?.addEventListener('click', openDBModal);
+
+  document.getElementById('db-connect-submit')?.addEventListener('click', async () => {
+    const alias  = document.getElementById('db-alias')?.value?.trim();
+    const dbName = document.getElementById('db-database-name')?.value?.trim();
+    const host   = document.getElementById('db-host')?.value?.trim() || 'localhost';
+    if (!alias)  return showToast('Введите псевдоним', 'error');
+    if (!dbName) return showToast('Введите имя базы данных', 'error');
+
+    const btn = document.getElementById('db-connect-submit');
+    btn.disabled = true; btn.textContent = 'Подключение...';
+    try {
+      const result = await api.connectDB({
+        host,
+        port:           document.getElementById('db-port')?.value || '5432',
+        database_name:  dbName,
+        database_alias: alias,
+        db_username:    document.getElementById('db-username')?.value?.trim() || '',
+        password:       document.getElementById('db-password')?.value || '',
+        dialect:        document.getElementById('db-dialect')?.value || 'postgresql',
+        ssl:            document.getElementById('db-ssl')?.checked || false,
+      });
+      // result = DbConnectResponse {id, db_alias, db_name, is_active}
+      dbs.push(result);
+      if (!activeDBId) activeDBId = result.id;
+      renderDBList();
+      closeDBModal();
+      showToast(`БД «${result.db_alias}» добавлена!`, 'success');
+    } catch (err) {
+      showToast(err.message || 'Ошибка подключения', 'error');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Подключить';
+    }
+  });
+
+  /* ── LOAD DBs ON START ── */
+  async function loadDBs() {
+    try {
+      dbs = await api.getUserDBs();
+      if (dbs.length && !activeDBId) activeDBId = dbs[0].id;
+    } catch {
+      dbs = [];
+    }
+    renderDBList();
+  }
+  loadDBs();
+
+  /* ── HISTORY ── */
   let history = [];
 
   function formatDate(isoStr) {
     const d = new Date(isoStr);
-    return d.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleString('ru-RU', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
   }
 
   function renderHistory() {
     const container = document.getElementById('history-list');
     if (!container) return;
     if (history.length === 0) {
-      container.innerHTML = `<div style="font-size:12px; font-family:var(--font-mono); color:var(--text-dim); padding: 8px 4px;">История пуста</div>`;
+      container.innerHTML = '<div style="font-size:12px; font-family:var(--font-mono); color:var(--text-dim); padding:8px 4px;">История пуста</div>';
       return;
     }
     container.innerHTML = history.map((h, i) => `
       <div class="history-item" data-index="${i}">
         <div class="history-item-query">${h.prompt}</div>
         <div class="history-item-time">${formatDate(h.created_at)}</div>
-      </div>
-    `).join('');
-
+      </div>`).join('');
     container.querySelectorAll('.history-item').forEach(el => {
       el.addEventListener('click', () => selectHistory(+el.dataset.index));
     });
@@ -225,57 +374,38 @@ function initWorkshop() {
   function selectHistory(i) {
     const h = history[i];
     if (!h) return;
-
     if (promptTextarea) promptTextarea.value = h.prompt;
-
     if (dialect) {
       dialect.value = h.dialect;
       if (dialectBtn) dialectBtn.querySelector('.dialect-current').textContent = h.dialect;
-      document.querySelectorAll('.dialect-option').forEach(opt => {
-        opt.classList.toggle('active', opt.dataset.value === h.dialect);
-      });
+      document.querySelectorAll('.dialect-option').forEach(opt =>
+        opt.classList.toggle('active', opt.dataset.value === h.dialect));
     }
-
-    currentSQL = h.query;
     renderSQL(h.query, h.is_danger);
-
     document.querySelectorAll('.history-item').forEach((el, j) =>
-      el.classList.toggle('active', j === i)
-    );
+      el.classList.toggle('active', j === i));
   }
 
-  function addHistoryItem(entry) {
-    history.unshift(entry);
-    renderHistory();
-  }
+  function addHistoryItem(entry) { history.unshift(entry); renderHistory(); }
 
   async function loadHistory() {
-    try {
-      history = await api.getHistory();
-    } catch {
-      history = [];
-      showToast('Не удалось загрузить историю', 'error');
-    }
+    try { history = await api.getHistory(); }
+    catch { history = []; showToast('Не удалось загрузить историю', 'error'); }
     renderHistory();
   }
-
   loadHistory();
 
-  /* ── LOGOUT ───────────────────────────────────────────── */
+  /* ── LOGOUT ── */
   document.getElementById('logout-btn')?.addEventListener('click', () => auth.logout());
 
-  /* ── DB CONNECT BTN ───────────────────────────────────── */
-  document.getElementById('db-connect-btn')?.addEventListener('click', () => openDBModal());
-
-  /* ── GENERATE ─────────────────────────────────────────── */
+  /* ── GENERATE ── */
   if (generateBtn && promptTextarea) {
     generateBtn.addEventListener('click', handleGenerate);
-    promptTextarea.addEventListener('keydown', (e) => {
+    promptTextarea.addEventListener('keydown', e => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') handleGenerate();
     });
   }
 
-  // Синхронизируем currentSQL с тем что юзер мог отредактировать в редакторе
   if (sqlEditor) {
     sqlEditor.addEventListener('input', () => { currentSQL = sqlEditor.value; });
   }
@@ -287,20 +417,11 @@ function initWorkshop() {
     try {
       const { query, is_danger } = await api.generateSQL(prompt, dialect ? dialect.value : 'postgresql');
       renderSQL(query, is_danger);
-      addHistoryItem({
-        prompt,
-        query,
-        is_danger,
-        dialect: dialect ? dialect.value : 'postgresql',
-        created_at: new Date().toISOString(),
-      });
-      if (is_danger) {
-        showToast('⚠️ Запрос может изменить или удалить данные — проверьте перед выполнением', 'error');
-      } else {
-        showToast('SQL сгенерирован', 'success');
-      }
+      addHistoryItem({ prompt, query, is_danger, dialect: dialect ? dialect.value : 'postgresql', created_at: new Date().toISOString() });
+      if (is_danger) showToast('⚠️ Запрос может изменить или удалить данные', 'error');
+      else showToast('SQL сгенерирован', 'success');
     } catch (err) {
-      showToast(err.msg || err.message || 'Неизвестная ошибка', 'error');
+      showToast(err.msg || err.message || 'Ошибка генерации', 'error');
     } finally {
       setGenerating(false);
     }
@@ -309,13 +430,7 @@ function initWorkshop() {
   function setGenerating(v) {
     if (!generateBtn) return;
     generateBtn.disabled = v;
-    generateBtn.innerHTML = v
-      ? '<span class="spin-icon">◌</span> Генерация...'
-      : '⚡ Генерировать SQL';
-    if (v) {
-      const spin = generateBtn.querySelector('.spin-icon');
-      if (spin) spin.style.animation = 'spin 1s linear infinite';
-    }
+    generateBtn.innerHTML = v ? '<span>◌</span> Генерация...' : '⚡ Генерировать SQL';
   }
 
   function renderSQL(sql, is_danger = false) {
@@ -325,19 +440,22 @@ function initWorkshop() {
     if (badge) badge.style.display = is_danger ? 'inline-flex' : 'none';
   }
 
-  /* ── EXECUTE ──────────────────────────────────────────── */
+  /* ── EXECUTE ── */
   if (execBtn) execBtn.addEventListener('click', handleExecute);
 
   async function handleExecute() {
     const sql = sqlEditor ? sqlEditor.value.trim() : currentSQL;
-    if (!sql) { showToast('Сначала сгенерируйте или введите SQL', 'error'); return; }
-    if (!hasActiveDB()) { showToast('Подключите базу данных', 'error'); return; }
+    if (!sql) { showToast('Сначала введите или сгенерируйте SQL', 'error'); return; }
+    const db = getActiveDB();
+    if (!db) { showToast('Выберите базу данных', 'error'); return; }
+    if (!db.is_active) { showToast('Сначала активируйте сессию для этой БД', 'error'); openSessionModal(db.id, db.db_alias); return; }
+
     if (execBtn) { execBtn.disabled = true; execBtn.textContent = '▶ Выполнение...'; }
     if (executeSection) executeSection.style.display = 'block';
     if (resultsSection) resultsSection.style.display = 'block';
+
     try {
-      const activeDB = connectedDBs.find(d => d.id === activeDBId);
-      const results = await api.executeSQL(sql, activeDB.config);
+      const results = await api.executeSQL(sql, db.id);
       lastResults = results;
       renderResults(results);
       showToast(`Получено ${results.rowCount} строк`, 'success');
@@ -349,25 +467,53 @@ function initWorkshop() {
   }
 
   function renderResults(results) {
-    const tbody  = document.getElementById('results-tbody');
-    const thead  = document.getElementById('results-thead');
-    const footer = document.getElementById('results-footer-info');
+    const tbody    = document.getElementById('results-tbody');
+    const thead    = document.getElementById('results-thead');
+    const footer   = document.getElementById('results-footer-info');
+    const wrap     = document.getElementById('results-table-wrap');
+    const expandBtn = document.getElementById('results-expand-btn');
     if (!tbody || !thead) return;
+
     thead.innerHTML = results.columns.map(c => `<th>${c}</th>`).join('');
-    tbody.innerHTML = results.rows.map(row =>
-      `<tr>${row.map(v => `<td class="${v === null ? 'null-val' : ''}">${v === null ? 'NULL' : v}</td>`).join('')}</tr>`
-    ).join('');
-    if (footer) footer.textContent = `${results.rowCount} строк • ${results.execMs}ms`;
+    if (results.rows.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="99" style="text-align:center; color:var(--text-dim); padding:20px;">Запрос вернул 0 строк</td></tr>';
+    } else {
+      tbody.innerHTML = results.rows.map(row =>
+        `<tr>${row.map(v => `<td class="${v === null ? 'null-val' : ''}">${v === null ? 'NULL' : v}</td>`).join('')}</tr>`
+      ).join('');
+    }
+
+    // collapse logic
+    if (wrap && expandBtn) {
+      const total = results.rows.length;
+      if (total > 10) {
+        wrap.classList.add('collapsed');
+        expandBtn.classList.add('visible');
+        expandBtn.textContent = `▼ Показать все ${total} строк`;
+        expandBtn.onclick = () => {
+          wrap.classList.remove('collapsed');
+          expandBtn.classList.remove('visible');
+        };
+      } else {
+        wrap.classList.remove('collapsed');
+        expandBtn.classList.remove('visible');
+      }
+    }
+
+    if (footer) footer.textContent = `${results.rowCount} строк`;
   }
 
-  /* ── COPY SQL ─────────────────────────────────────────── */
-  const copyBtn = document.getElementById('copy-sql-btn');
-  if (copyBtn) copyBtn.addEventListener('click', () => {
-    if (currentSQL) copyToClipboard(currentSQL);
-    else showToast('Нет SQL для копирования', 'error');
+  /* ── COPY / EXPORT ── */
+  document.getElementById('copy-sql-btn')?.addEventListener('click', () => {
+    const sql = sqlEditor?.value || currentSQL;
+    if (sql) copyToClipboard(sql); else showToast('Нет SQL для копирования', 'error');
   });
-
-  /* ── EXPORT ───────────────────────────────────────────── */
+  document.getElementById('export-sql')?.addEventListener('click', () => {
+    const sql = sqlEditor?.value || currentSQL;
+    if (!sql) return showToast('Нет SQL для экспорта', 'error');
+    exportUtils.download('query.sql', sql, 'text/plain');
+    showToast('SQL файл скачан', 'success');
+  });
   document.getElementById('export-csv')?.addEventListener('click', () => {
     if (!lastResults) return showToast('Нет данных для экспорта', 'error');
     exportUtils.download('results.csv', exportUtils.toCSV(lastResults), 'text/csv');
@@ -378,104 +524,8 @@ function initWorkshop() {
     exportUtils.download('results.json', exportUtils.toJSON(lastResults), 'application/json');
     showToast('JSON экспортирован', 'success');
   });
-  document.getElementById('export-sql')?.addEventListener('click', () => {
-    if (!currentSQL) return showToast('Нет SQL для экспорта', 'error');
-    exportUtils.download('query.sql', currentSQL, 'text/plain');
-    showToast('SQL файл скачан', 'success');
-  });
-
-  /* ── DB MODAL ─────────────────────────────────────────── */
-  const dbModal = document.getElementById('db-modal');
-  window.openDBModal  = () => dbModal?.classList.add('open');
-  window.closeDBModal = () => dbModal?.classList.remove('open');
-
-  const dbConnectSubmitBtn = document.getElementById('db-connect-submit');
-  if (dbConnectSubmitBtn) {
-    dbConnectSubmitBtn.addEventListener('click', async () => {
-      dbConnectSubmitBtn.disabled = true;
-      dbConnectSubmitBtn.textContent = 'Подключение...';
-      try {
-        const dbName  = document.getElementById('db-name')?.value?.trim() || 'mydb';
-        const host    = document.getElementById('db-host')?.value?.trim() || 'localhost';
-        const db_type = document.getElementById('db-type')?.value || 'postgresql';
-        const config = {
-          host,
-          port:     document.getElementById('db-port')?.value || '5432',
-          db_name:  dbName,
-          username: document.getElementById('db-user')?.value?.trim() || '',
-          password: document.getElementById('db-pass')?.value || '',
-          db_type,
-        };
-        await api.connectDB(config);
-        const id = Date.now();
-        connectedDBs.push({ id, name: dbName, host, config });
-        activeDBId = id;
-        renderDBList();
-        closeDBModal();
-        showToast(`БД «${dbName}» подключена!`, 'success');
-        if (executeSection) executeSection.style.display = 'block';
-      } catch (err) {
-        showToast(`Ошибка подключения: ${err.message}`, 'error');
-      } finally {
-        dbConnectSubmitBtn.disabled = false;
-        dbConnectSubmitBtn.textContent = 'Подключить';
-      }
-    });
-  }
-
-  function renderDBList() {
-    const list = document.getElementById('db-list');
-    if (!list) return;
-    if (connectedDBs.length === 0) {
-      list.innerHTML = `<div style="font-size:12px; font-family:var(--font-mono); color:var(--text-dim); padding: 6px 2px;">Нет подключений</div>`;
-      return;
-    }
-    list.innerHTML = connectedDBs.map(db => `
-      <div class="db-entry ${db.id === activeDBId ? 'db-entry-active' : ''}"
-           onclick="selectDB(${db.id})"
-           style="
-             border-radius: 6px;
-             border: 1px solid ${db.id === activeDBId ? 'var(--border-hi)' : 'transparent'};
-             background: ${db.id === activeDBId ? 'var(--bg-hover)' : 'transparent'};
-             margin-bottom: 4px; cursor: pointer; transition: all 0.15s;
-           ">
-        <div style="display:flex; align-items:center; gap:8px; padding: 8px 10px;">
-          <span class="status-dot online" style="width:6px;height:6px; flex-shrink:0;"></span>
-          <div style="flex:1; overflow:hidden;">
-            <div style="font-size:12px; font-family:var(--font-mono); font-weight:700; color:var(--text); text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${db.name}</div>
-            <div style="font-size:10px; font-family:var(--font-mono); color:var(--text-dim);">${db.config.db_type} · ${db.host}</div>
-          </div>
-          <button onclick="event.stopPropagation(); disconnectDB(${db.id})"
-            style="background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:13px; padding:0 2px; line-height:1; transition:color 0.15s;"
-            title="Отключить"
-            onmouseover="this.style.color='#ff6b6b'"
-            onmouseout="this.style.color='var(--text-dim)'">✕</button>
-        </div>
-      </div>
-    `).join('');
-  }
-
-  window.selectDB = function(id) {
-    activeDBId = id;
-    renderDBList();
-  };
-
-  window.disconnectDB = function(id) {
-    const idx = connectedDBs.findIndex(d => d.id === id);
-    if (idx === -1) return;
-    const name = connectedDBs[idx].name;
-    connectedDBs.splice(idx, 1);
-    if (activeDBId === id) {
-      activeDBId = connectedDBs.length > 0 ? connectedDBs[connectedDBs.length - 1].id : null;
-    }
-    renderDBList();
-    if (connectedDBs.length === 0 && executeSection) {
-      executeSection.style.display = 'none';
-      if (resultsSection) resultsSection.style.display = 'none';
-    }
-    showToast(`БД «${name}» отключена`, 'info');
-  };
 }
+
 
 /* ── BOOT ───────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => {

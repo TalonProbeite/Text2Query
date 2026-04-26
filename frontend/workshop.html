@@ -10,108 +10,103 @@
     body { overflow: hidden; visibility: hidden; }
     .workshop-page-wrap { display: flex; flex-direction: column; height: 100vh; }
 
-    /* User card (same as main page) */
+    .danger-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 18px; height: 18px; background: #ff4444; color: #fff;
+      font-size: 11px; font-weight: 700; border-radius: 3px;
+      margin-left: 8px; cursor: default; vertical-align: middle;
+      position: relative; top: -1px; line-height: 1;
+    }
+    .danger-badge::after {
+      content: attr(title); display: none; position: absolute;
+      top: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+      background: #1a1a1a; color: #ff9090; font-size: 11px;
+      font-family: var(--font-mono, monospace); font-weight: 400;
+      white-space: nowrap; padding: 6px 10px; border-radius: 6px;
+      border: 1px solid #ff4444; pointer-events: none; z-index: 100;
+    }
+    .danger-badge:hover::after { display: block; }
+
     .navbar-user-card {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      background: var(--bg-panel);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 6px 12px 6px 8px;
-      cursor: default;
+      display: flex; align-items: center; gap: 10px;
+      background: var(--bg-panel); border: 1px solid var(--border);
+      border-radius: 8px; padding: 6px 12px 6px 8px; cursor: default;
     }
     .navbar-user-avatar {
-      width: 28px;
-      height: 28px;
-      border-radius: 6px;
-      background: var(--accent);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 13px;
-      font-weight: 700;
-      color: #000;
-      flex-shrink: 0;
+      width: 28px; height: 28px; border-radius: 6px;
+      background: var(--accent); display: flex; align-items: center;
+      justify-content: center; font-size: 13px; font-weight: 700;
+      color: #000; flex-shrink: 0;
     }
     .navbar-user-info { display: flex; flex-direction: column; gap: 1px; }
     .navbar-user-name { font-size: 12px; font-weight: 600; color: var(--text); font-family: var(--font-mono); line-height: 1.2; }
     .navbar-user-plan { font-size: 10px; color: var(--accent); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.2; }
 
-    /* Editable SQL textarea */
     .sql-editor {
-      width: 100%;
-      min-height: 160px;
-      resize: vertical;
-      background: transparent;
-      border: none;
-      outline: none;
-      font-family: var(--font-mono, monospace);
-      font-size: 13px;
-      line-height: 1.6;
-      color: var(--text);
-      padding: 16px;
-      box-sizing: border-box;
-      tab-size: 2;
+      width: 100%; min-height: 160px; resize: vertical;
+      background: transparent; border: none; outline: none;
+      font-family: var(--font-mono, monospace); font-size: 13px;
+      line-height: 1.6; color: var(--text); padding: 16px;
+      box-sizing: border-box; tab-size: 2;
     }
     .sql-editor::placeholder { color: var(--text-dim); }
 
-    .danger-badge {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 18px;
-      height: 18px;
-      background: #ff4444;
-      color: #fff;
-      font-size: 11px;
-      font-weight: 700;
-      border-radius: 3px;
-      margin-left: 8px;
-      cursor: default;
-      vertical-align: middle;
-      position: relative;
-      top: -1px;
-      line-height: 1;
+    /* DB list */
+    .db-item {
+      border-radius: 6px; border: 1px solid transparent;
+      margin-bottom: 6px; transition: all 0.15s; cursor: pointer;
     }
+    .db-item:hover { background: var(--bg-hover); }
+    .db-item.selected { border-color: var(--border-hi); background: var(--bg-hover); }
+    .db-item-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; }
+    .db-status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .db-status-dot.active   { background: #00e5a0; box-shadow: 0 0 6px rgba(0,229,160,0.5); }
+    .db-status-dot.inactive { background: #555; }
+    .db-item-info { flex: 1; overflow: hidden; }
+    .db-item-alias { font-size: 12px; font-family: var(--font-mono); font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .db-item-meta  { font-size: 10px; font-family: var(--font-mono); color: var(--text-dim); margin-top: 1px; }
+    .db-item-actions { display: flex; gap: 2px; flex-shrink: 0; }
+    .db-action-btn {
+      background: none; border: none; cursor: pointer; padding: 3px 5px;
+      font-size: 11px; color: var(--text-dim); border-radius: 4px;
+      transition: color 0.15s, background 0.15s; line-height: 1;
+    }
+    .db-action-btn:hover { color: var(--text); background: var(--bg-panel); }
+    .db-action-btn.danger:hover { color: #ff6b6b; }
 
-    .danger-badge::after {
-      content: attr(title);
-      display: none;
-      position: absolute;
-      top: calc(100% + 8px);
-      left: 50%;
-      transform: translateX(-50%);
-      background: #1a1a1a;
-      color: #ff9090;
-      font-size: 11px;
-      font-family: var(--font-mono, monospace);
-      font-weight: 400;
-      white-space: nowrap;
-      padding: 6px 10px;
-      border-radius: 6px;
-      border: 1px solid #ff4444;
-      pointer-events: none;
-      z-index: 100;
+    /* session banner inside inactive db item */
+    .db-session-banner {
+      padding: 4px 10px 8px; display: flex; align-items: center; gap: 8px;
+      font-size: 11px; font-family: var(--font-mono); color: var(--text-dim);
     }
+    .db-session-banner button {
+      background: none; border: 1px solid var(--border); border-radius: 4px;
+      padding: 2px 8px; font-size: 10px; font-family: var(--font-mono);
+      color: var(--accent); cursor: pointer; transition: border-color 0.15s;
+    }
+    .db-session-banner button:hover { border-color: var(--accent); }
 
-    .danger-badge:hover::after {
-      display: block;
+    /* results collapse */
+    .results-table-wrap.collapsed tbody tr:nth-child(n+11) { display: none; }
+    .results-expand-btn {
+      width: 100%; background: none; border: none; border-top: 1px solid var(--border);
+      padding: 8px; font-size: 11px; font-family: var(--font-mono);
+      color: var(--text-muted); cursor: pointer; transition: color 0.15s; display: none;
     }
+    .results-expand-btn:hover { color: var(--accent); }
+    .results-expand-btn.visible { display: block; }
   </style>
-
 </head>
 <body id="workshop-page">
 <div class="workshop-page-wrap">
 
-  <!-- ── NAVBAR ─────────────────────────────────────────── -->
-  <nav class="navbar" style="position: relative; flex-shrink: 0;">
+  <nav class="navbar" style="position:relative; flex-shrink:0;">
     <a class="navbar-logo" href="index.html">
       <div class="navbar-logo-icon">⚡</div>
       SQL<span>Craft</span>
     </a>
     <div class="navbar-links">
-      <div class="navbar-user-card" id="navbar-user-card">
+      <div class="navbar-user-card">
         <div class="navbar-user-avatar" id="user-avatar">?</div>
         <div class="navbar-user-info">
           <div class="navbar-user-name" id="user-name">...</div>
@@ -122,106 +117,74 @@
     </div>
   </nav>
 
-  <!-- ── WORKSHOP LAYOUT ────────────────────────────────── -->
-  <div class="workshop-layout" style="flex: 1; overflow: hidden;">
+  <div class="workshop-layout" style="flex:1; overflow:hidden;">
 
-    <!-- ── SIDEBAR ──────────────────────────────────────── -->
     <aside class="sidebar">
-
-      <!-- DB connection -->
       <div class="sidebar-section">
         <div class="sidebar-section-title" style="display:flex; align-items:center; justify-content:space-between;">
           <span>Базы данных</span>
-          <button class="btn-icon" id="db-connect-btn" title="Добавить подключение" style="width:22px;height:22px;font-size:14px;">+</button>
+          <button class="btn-icon" id="db-connect-btn" title="Добавить БД" style="width:22px;height:22px;font-size:14px;">+</button>
         </div>
         <div id="db-list">
-          <!-- Rendered by JS -->
-          <div style="font-size:12px; font-family:var(--font-mono); color:var(--text-dim); padding: 6px 2px;">
-            Нет подключений
-          </div>
+          <div style="font-size:12px; font-family:var(--font-mono); color:var(--text-dim); padding:6px 2px;">Нет подключений</div>
         </div>
       </div>
-
-      <!-- History -->
-      <div class="sidebar-section" style="border-bottom: none; padding-bottom: 8px;">
+      <div class="sidebar-section" style="border-bottom:none; padding-bottom:8px;">
         <div class="sidebar-section-title">История</div>
       </div>
-      <div class="sidebar-history" id="history-list">
-        <!-- Rendered by JS -->
-      </div>
-
+      <div class="sidebar-history" id="history-list"></div>
     </aside>
 
-    <!-- ── MAIN AREA ─────────────────────────────────────── -->
     <div class="workshop-main">
-
-      <!-- header -->
       <div class="workshop-header">
         <div class="workshop-header-left">
           <div>
             <div class="workshop-header-title">Мастерская</div>
-            <div class="workshop-header-sub">Генерация и выполнение SQL</div>
+            <div class="workshop-header-sub" id="active-db-label">База данных не выбрана</div>
           </div>
         </div>
         <div class="workshop-header-right">
-          <span class="badge badge-green" style="font-size: 11px;">
-            <span class="status-dot online" style="width:6px;height:6px;"></span> LIVE MODE
+          <span class="badge badge-green" style="font-size:11px;">
+            <span class="status-dot online" style="width:6px;height:6px;"></span> LIVE
           </span>
         </div>
       </div>
 
-      <!-- scrollable body -->
       <div class="workshop-body">
 
-        <!-- ── PROMPT INPUT ─────────────────────────────── -->
         <div class="prompt-area">
           <div class="prompt-toolbar">
             <span class="prompt-toolbar-label">Промт</span>
-
-            <!-- dialect selector -->
             <div class="dialect-wrap">
               <button class="dialect-btn" id="dialect-btn">
-                <span>🗄</span>
-                <span class="dialect-current">PostgreSQL</span>
-                <span class="arrow">▾</span>
+                <span>🗄</span><span class="dialect-current">PostgreSQL</span><span class="arrow">▾</span>
               </button>
               <div class="dialect-dropdown" id="dialect-dropdown">
-                <div class="dialect-option active" data-value="postgresql" data-label="PostgreSQL">
-                  PostgreSQL <span class="check">✓</span>
-                </div>
-                <div class="dialect-option" data-value="mysql" data-label="MySQL">MySQL</div>
-                <div class="dialect-option" data-value="mariadb" data-label="MariaDB">MariaDB</div>
-                <div class="dialect-option" data-value="sqlite" data-label="SQLite">SQLite</div>
-                <div class="dialect-option" data-value="mssql" data-label="MS SQL Server">MS SQL Server</div>
-                <div class="dialect-option" data-value="oracle" data-label="Oracle">Oracle</div>
-                <div class="dialect-option" data-value="bigquery" data-label="BigQuery">BigQuery</div>
+                <div class="dialect-option active" data-value="postgresql" data-label="PostgreSQL">PostgreSQL <span class="check">✓</span></div>
+                <div class="dialect-option" data-value="mysql"      data-label="MySQL">MySQL</div>
+                <div class="dialect-option" data-value="mariadb"    data-label="MariaDB">MariaDB</div>
+                <div class="dialect-option" data-value="sqlite"     data-label="SQLite">SQLite</div>
+                <div class="dialect-option" data-value="mssql"      data-label="MS SQL Server">MS SQL Server</div>
+                <div class="dialect-option" data-value="oracle"     data-label="Oracle">Oracle</div>
+                <div class="dialect-option" data-value="bigquery"   data-label="BigQuery">BigQuery</div>
                 <div class="dialect-option" data-value="clickhouse" data-label="ClickHouse">ClickHouse</div>
               </div>
             </div>
           </div>
-
-          <textarea
-            class="prompt-textarea"
-            id="prompt-textarea"
-            placeholder="Например: «Покажи топ-10 клиентов по выручке за последние 30 дней, с количеством заказов»"
-          ></textarea>
-
+          <textarea class="prompt-textarea" id="prompt-textarea"
+            placeholder="Например: «Покажи топ-10 клиентов по выручке за последние 30 дней»"></textarea>
           <div class="prompt-footer">
-            <div class="prompt-footer-left">
-              <span class="prompt-hint">Ctrl+Enter — генерировать</span>
-            </div>
-            <button class="btn btn-primary btn-sm" id="generate-btn">
-              ⚡ Генерировать SQL
-            </button>
+            <div class="prompt-footer-left"><span class="prompt-hint">Ctrl+Enter — генерировать</span></div>
+            <button class="btn btn-primary btn-sm" id="generate-btn">⚡ Генерировать SQL</button>
           </div>
         </div>
 
-        <!-- ── SQL OUTPUT ────────────────────────────────── -->
         <div class="sql-output-card">
           <div class="sql-output-header">
             <span class="card-title">
               <span class="dot"></span> SQL-запрос
-              <span class="danger-badge" id="danger-badge" style="display:none;" title="Запрос может быть потенциально опасен для данных в БД — будьте осторожны">⚠</span>
+              <span class="danger-badge" id="danger-badge" style="display:none;"
+                title="Запрос может быть потенциально опасен для данных в БД — будьте осторожны">⚠</span>
             </span>
             <div class="sql-output-actions">
               <button class="btn btn-ghost btn-sm" id="exec-sql-btn">▶ Выполнить</button>
@@ -233,18 +196,12 @@
               </button>
             </div>
           </div>
-          <textarea
-            class="sql-output-body sql-editor"
-            id="sql-output-body"
-            spellcheck="false"
+          <textarea class="sql-editor" id="sql-output-body" spellcheck="false"
             placeholder="SQL-запрос появится здесь после генерации..."></textarea>
         </div>
 
-        <!-- ── EXECUTE SECTION (shown only when DB connected) ── -->
-        <div id="execute-section" style="display: none;" class="execute-section">
-
-          <!-- RESULTS -->
-          <div id="results-section" style="margin-top: 16px;">
+        <div id="execute-section" style="display:none;" class="execute-section">
+          <div id="results-section" style="margin-top:16px;">
             <div class="results-card">
               <div class="results-header">
                 <span class="card-title"><span class="dot"></span> Результаты</span>
@@ -253,117 +210,132 @@
                   <button class="btn btn-secondary btn-sm" id="export-json">⬇ JSON</button>
                 </div>
               </div>
-              <div class="results-table-wrap">
+              <div class="results-table-wrap collapsed" id="results-table-wrap">
                 <table class="results-table">
                   <thead><tr id="results-thead"></tr></thead>
                   <tbody id="results-tbody">
-                    <tr>
-                      <td colspan="5" style="text-align:center; color: var(--text-dim); font-style:italic; padding: 24px;">
-                        Нет данных — нажмите «Выполнить» или сгенерируйте запрос
-                      </td>
-                    </tr>
+                    <tr><td colspan="5" style="text-align:center; color:var(--text-dim); font-style:italic; padding:24px;">Нет данных</td></tr>
                   </tbody>
                 </table>
               </div>
+              <button class="results-expand-btn" id="results-expand-btn">▼ Показать все строки</button>
               <div class="results-footer">
                 <span class="status-dot online"></span>
-                <span id="results-footer-info" style="color: var(--text-muted);">Ожидание запроса</span>
+                <span id="results-footer-info" style="color:var(--text-muted);">Ожидание запроса</span>
               </div>
             </div>
           </div>
-
         </div>
-        <!-- /execute-section -->
 
-        <!-- bottom padding -->
-        <div style="height: 24px;"></div>
+        <div style="height:24px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
 
-      </div><!-- /workshop-body -->
-    </div><!-- /workshop-main -->
-
-  </div><!-- /workshop-layout -->
-
-</div><!-- /workshop-page-wrap -->
-
-<!-- ── DB CONNECT MODAL ──────────────────────────────── -->
+<!-- ADD DB MODAL -->
 <div class="modal-overlay" id="db-modal">
-  <div class="modal">
+  <div class="modal" style="max-width:480px;">
     <div class="modal-header">
-      <span class="modal-title">🔌 Подключить базу данных</span>
+      <span class="modal-title">🔌 Добавить базу данных</span>
       <button class="modal-close" onclick="closeDBModal()">✕</button>
     </div>
+    <div style="display:flex; flex-direction:column; gap:14px;">
 
-    <div style="display: flex; flex-direction: column; gap: 14px;">
-      <div class="input-group">
-        <label class="input-label">Тип БД</label>
-        <select class="select" id="db-type">
-          <option value="postgresql">PostgreSQL</option>
-          <option value="mysql">MySQL</option>
-          <option value="mariadb">MariaDB</option>
-        </select>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <div class="input-group">
+          <label class="input-label">Диалект</label>
+          <select class="select" id="db-dialect">
+            <option value="postgresql">PostgreSQL</option>
+            <option value="mysql">MySQL</option>
+            <option value="mariadb">MariaDB</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label class="input-label">Псевдоним (alias)</label>
+          <input class="input" id="db-alias" type="text" placeholder="my-prod-db" />
+        </div>
       </div>
 
-      <div style="display: grid; grid-template-columns: 1fr 100px; gap: 10px;">
+      <div style="display:grid; grid-template-columns:1fr 100px; gap:10px;">
         <div class="input-group">
           <label class="input-label">Хост</label>
           <input class="input" id="db-host" type="text" placeholder="localhost" value="localhost" />
         </div>
         <div class="input-group">
           <label class="input-label">Порт</label>
-          <input class="input" id="db-port" type="text" placeholder="5432" value="5432" />
+          <input class="input" id="db-port" type="number" placeholder="5432" value="5432" />
         </div>
       </div>
 
       <div class="input-group">
         <label class="input-label">Имя базы данных</label>
-        <input class="input" id="db-name" type="text" placeholder="mydb" />
+        <input class="input" id="db-database-name" type="text" placeholder="mydb" />
       </div>
 
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
         <div class="input-group">
           <label class="input-label">Пользователь</label>
-          <input class="input" id="db-user" type="text" placeholder="postgres" />
+          <input class="input" id="db-username" type="text" placeholder="postgres" />
         </div>
         <div class="input-group">
           <label class="input-label">Пароль</label>
-          <input class="input" id="db-pass" type="password" placeholder="••••••••" />
+          <input class="input" id="db-password" type="password" placeholder="••••••••" />
         </div>
       </div>
 
-      <div style="display: flex; gap: 10px; margin-top: 8px;">
-        <button class="btn btn-secondary" style="flex: 1; justify-content: center;" onclick="closeDBModal()">Отмена</button>
-        <button class="btn btn-primary" style="flex: 1; justify-content: center;" id="db-connect-submit">Подключить</button>
-      </div>
+      <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+        <label class="toggle" style="flex-shrink:0;">
+          <input type="checkbox" id="db-ssl" />
+          <span class="toggle-slider"></span>
+        </label>
+        <span style="font-size:12px; font-family:var(--font-mono); color:var(--text-muted);">SSL соединение</span>
+      </label>
 
+      <div style="display:flex; gap:10px; margin-top:4px;">
+        <button class="btn btn-secondary" style="flex:1; justify-content:center;" onclick="closeDBModal()">Отмена</button>
+        <button class="btn btn-primary"   style="flex:1; justify-content:center;" id="db-connect-submit">Подключить</button>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- ── FOOTER ─────────────────────────────────────────── -->
-<footer class="footer" style="flex-shrink: 0; display: none;" id="workshop-footer">
-  <!-- hidden by default in workshop to save space, can be toggled -->
-</footer>
+<!-- SESSION MODAL -->
+<div class="modal-overlay" id="session-modal">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-header">
+      <span class="modal-title">🔑 Активация сессии</span>
+      <button class="modal-close" onclick="closeSessionModal()">✕</button>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:14px;">
+      <p style="font-size:12px; font-family:var(--font-mono); color:var(--text-muted); line-height:1.6; margin:0;">
+        Введите пароль от базы <strong id="session-db-name" style="color:var(--text);"></strong>.<br>
+        Сессия будет активна 8 часов и удалится при выходе.
+      </p>
+      <div class="input-group">
+        <label class="input-label">Пароль</label>
+        <input class="input" id="session-password" type="password" placeholder="••••••••" />
+      </div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn btn-secondary" style="flex:1; justify-content:center;" onclick="closeSessionModal()">Отмена</button>
+        <button class="btn btn-primary"   style="flex:1; justify-content:center;" id="session-submit">Активировать</button>
+      </div>
+    </div>
+  </div>
+</div>
 
-<!-- Compact footer bar -->
-<div style="
-  border-top: 1px solid var(--border);
-  padding: 8px 24px;
-  display: flex; align-items: center; justify-content: space-between;
-  font-size: 11px; font-family: var(--font-mono); color: var(--text-dim);
-  background: var(--bg-panel); flex-shrink: 0;
-">
-  <div style="display: flex; gap: 20px;">
-    <a href="#" style="color: var(--text-dim);">Документация</a>
-    <a href="#" style="color: var(--text-dim);">API</a>
-    <a href="#" style="color: var(--text-dim);">Поддержка</a>
-    <a href="#" style="color: var(--text-dim);">Конфиденциальность</a>
+<div style="border-top:1px solid var(--border); padding:8px 24px; display:flex; align-items:center;
+  justify-content:space-between; font-size:11px; font-family:var(--font-mono); color:var(--text-dim);
+  background:var(--bg-panel); flex-shrink:0;">
+  <div style="display:flex; gap:20px;">
+    <a href="#" style="color:var(--text-dim);">Документация</a>
+    <a href="#" style="color:var(--text-dim);">API</a>
+    <a href="#" style="color:var(--text-dim);">Поддержка</a>
   </div>
   <span>© 2025 SQLCraft</span>
 </div>
 
 <div id="toast-container"></div>
-
-
 <script src="js/core.js"></script>
 <script src="js/pages.js"></script>
 </body>
