@@ -41,7 +41,7 @@ async def connect_db(db_data:DbConnectCreat, request: Request , db:AsyncSession=
         
         return DbConnectResponse(id= user_db.id,
                                  db_alias=user_db.database_alias,
-                                 db_name=user_db.user_db.database_name,
+                                 db_name=user_db.database_name,
                                  is_active=True)
     except (DBConnectionError, DBQueryError) as e:
         logger.exception(f"Connection to user database failed: {e.__cause__}")
