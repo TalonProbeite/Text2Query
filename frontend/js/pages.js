@@ -28,7 +28,7 @@ function initIndex() {
             <div class="navbar-user-plan">${me.plan || 'free'}</div>
           </div>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="goToWorkshop()">Мастерская →</button>
+        <a class="btn btn-primary btn-sm" href="workshop.html">Мастерская →</a>
       `;
     } else {
       // Токен просрочен или невалиден — чистим localStorage
@@ -75,7 +75,7 @@ function initAuth() {
   // Проверяем через сервер — localStorage врать может (просроченный токен)
   api.getMe().then(me => {
     if (me.is_logged) {
-      goToWorkshop();
+      window.location.href = 'workshop.html';
     } else {
       // Токен невалиден — чистим localStorage
       localStorage.removeItem('sqlcraft_user');
@@ -126,7 +126,7 @@ function initAuth() {
     try {
       const { user } = await api.login(email, pass);
       auth.setSession(user);
-      goToWorkshop();
+      window.location.href = 'workshop.html';
     } catch (err) {
       showAlert('login', err.msg || err.message || 'Неизвестная ошибка');
     } finally {
@@ -159,10 +159,8 @@ function initAuth() {
 }
 
 /* ── WORKSHOP PAGE INIT ─────────────────────────────────── */
-function initWorkshop() {
+async function initWorkshop() {
   if (!document.getElementById('workshop-page')) return;
-  if (!auth.requireAuth()) return;
-  document.body.style.visibility = 'visible';
 
   // User card
   api.getMe().then(me => {
@@ -338,14 +336,15 @@ function initWorkshop() {
   async function loadDBs() {
     try {
       dbs = await api.getUserDBs();
-      if (dbs.length && !activeDBId) activeDBId = dbs[0].id;
+      if (dbs.length && !activeDBId) {
+        activeDBId = dbs[0].id;
+        if (executeSection) executeSection.style.display = 'block';
+      }
     } catch {
       dbs = [];
     }
     renderDBList();
   }
-  loadDBs();
-
   /* ── HISTORY ── */
   let history = [];
 
@@ -390,10 +389,17 @@ function initWorkshop() {
 
   async function loadHistory() {
     try { history = await api.getHistory(); }
-    catch { history = []; showToast('Не удалось загрузить историю', 'error'); }
+    catch { history = []; }
     renderHistory();
   }
-  loadHistory();
+
+  // Запускаем оба запроса параллельно.
+  // Если токен истёк — перехватчик сделает refresh и повторит.
+  // Если refresh тоже не прошёл — перехватчик редиректит на auth.html.
+  await Promise.all([loadDBs(), loadHistory()]);
+
+  // Оба запроса прошли — показываем страницу
+  document.body.style.visibility = 'visible';
 
   /* ── LOGOUT ── */
   document.getElementById('logout-btn')?.addEventListener('click', () => auth.logout());
