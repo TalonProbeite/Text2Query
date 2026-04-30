@@ -227,9 +227,29 @@ const api = {
   },
 
   async deleteDB(dbId) {
-    // заглушка — ручка ещё не реализована
-    return { success: true };
-  },
+  try {
+    const res = await fetch('/user_db/delete_db', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ id: dbId }),
+    });
+    if (!res.ok) {
+      throw new Error("Ошибка сети или сервера");
+    }
+    const data = await res.json();
+
+    if (data.success === true) {
+      return { success: true };
+    } else {
+      throw new Error(data.message || "Ошибка при удалении базы данных!");
+    }
+  } catch (error) {
+    console.error("DeleteDB Error:", error);
+    throw error; 
+  }
+},
 
   async login(email, password) {
     const res = await fetch('/auth/login', {
