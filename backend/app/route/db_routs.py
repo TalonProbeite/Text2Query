@@ -151,3 +151,27 @@ async def start_session(user_credentials:StartSessionDb , request:Request ,db:As
     finally:
         if service and service.engine:
             await service.disconnect()
+
+
+
+@router.delete("/delete_db")
+async def  delete_user_db(db_id:int , request:Request ,db:AsyncSession= Depends(get_db)):
+    repo = DatabaseRepository(db=db)
+    try:
+        user_db = await repo.get_by_id(db_id)
+        if  not user_db:
+            logger.info("User database not found")
+            raise HTTPException(status_code=404, detail="Database not found!")
+        if user_db.user_id != request.state.user_id:
+            logger.warning(f"User id does not match the id from the request! User: id from request{request.state.user_id}")
+            raise HTTPException(status_code=404 , detail="Database not found!")
+        result = await repo.delete_by_id(db_id=db_id)
+        if result:
+            return {"success": True}
+        else:
+            return{"success": False}
+    except  HTTPException :
+        raise
+    except Exception as e:
+        logger.exception(f'Error when deleting user database: {e.__cause__}')
+        raise HTTPException(status_code=500) 
