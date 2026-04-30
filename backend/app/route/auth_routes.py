@@ -34,7 +34,7 @@ async def login(user_data:UserLogIn ,response: Response, db:AsyncSession = Depen
             httponly=True,
             secure=True,
             samesite="strict",
-            max_age=900
+            max_age=900 
         )
         response.set_cookie(
             key="refresh_token",
@@ -45,11 +45,9 @@ async def login(user_data:UserLogIn ,response: Response, db:AsyncSession = Depen
             max_age=604_800
         )
         return AuthResponse(
-            id=user_model.id,
             name=user_model.name,
             email=user_model.email,
-            plan=user_model.plan,
-            is_verified=user_model.is_verified
+            plan=user_model.plan
         )
     except InvalidPassword as e:
         logger.info(f"Invalid password:{e.__cause__}")
@@ -84,11 +82,9 @@ async def signup(user_data:UserRegister,db:AsyncSession = Depends(get_db)):
         await repo.add_verifi_token(user_id=user_model.id, token=token)
         await send_email_async(subject="SqlCraft | Подтверждение регистрации", email_to=user_model.email , body=html)
         return AuthResponse(
-            id=user_model.id,
             name=user_model.name,
             email=user_model.email,
-            plan=user_model.plan,
-            is_verified=user_model.is_verified
+            plan=user_model.plan
         )
     except UserAlreadyExists as e:
         logger.info(f"Email already exists:{e.__cause__}")
@@ -178,7 +174,7 @@ async def verify_mail(user_data: VerificationResponse , response:Response, db: A
             httponly=True,
             secure=True,
             samesite="strict",
-            max_age=900
+            max_age=900 
              )
             response.set_cookie(
             key="refresh_token",
@@ -221,11 +217,9 @@ async def resend_verification_code(user_data: GetToken , db: AsyncSession = Depe
         user = await repo.add_verifi_token(user_id=user_data.id, token=token)
         await send_email_async(subject="SqlCraft | Подтверждение регистрации", email_to=user_data.email , body=html)
         return AuthResponse(
-            id=user.id,
             name=user.name,
             email=user.email,
-            plan=user.plan,
-            is_verified=user.is_verified
+            plan=user.plan
         )
     except UserNotFound as e:
         logger.warning(f"Invalid id from user's schema:{e.__cause__}")
@@ -251,11 +245,9 @@ async def update_email(user_data:SetMail, db:AsyncSession= Depends(get_db)):
         user = await repo.add_verifi_token(user_id=user.id, token=token)
         await send_email_async(subject="SqlCraft | Подтверждение регистрации", email_to=user.email , body=html)
         return AuthResponse(
-            id=user.id,
             name=user.name,
             email=user.email,
-            plan=user.plan,
-            is_verified=user.is_verified
+            plan=user.plan
         )
     except UserNotFound as e:
         logger.warning(f"Invalid id from user's schema:{e.__cause__}")
@@ -282,7 +274,7 @@ async def refrech_token(request:Request , response:Response , db:AsyncSession = 
             raise HTTPException(status_code=401 , detail="Unauthorized")
         refrech_redis = refrech_redis.decode()
         repo = UserRepository(db)
-        user = await repo.get_by_id(refrech_redis)
+        user = await repo.get_by_id(int(refrech_redis))
         if not user.is_active:
             raise UserBannedError()
         token = encode_jwt({
@@ -299,7 +291,7 @@ async def refrech_token(request:Request , response:Response , db:AsyncSession = 
             httponly=True,
             secure=True,
             samesite="strict",
-            max_age=900
+            max_age=900 
         )
         response.set_cookie(
             key="refresh_token",
@@ -309,11 +301,15 @@ async def refrech_token(request:Request , response:Response , db:AsyncSession = 
             samesite="strict",
             max_age=604_800
             )
-        return {"success": True}
+        return AuthResponse(
+            name=user.name,
+            email=user.email,
+            plan=user.plan
+        )
     except HTTPException:
         raise
     except UserBannedError:
         logger.info("User is banned!")
         raise HTTPException(status_code=403 , detail="Access denied!")
     except Exception as e:
-        logger.warning(f"Unknown error: {e}")
+        logger.info(f"Unknown error: {e}")

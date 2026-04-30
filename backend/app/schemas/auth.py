@@ -16,12 +16,10 @@ class UserLogIn(BaseModel):
 class AuthResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     
-
-    id: int
     name: str
     email: EmailStr
     plan: str
-    is_verified:bool
+
 
 
 class VerificationResponse(BaseModel):
