@@ -63,12 +63,16 @@ const auth = {
 (function() {
   const _fetch = window.fetch;
 
-  // Маршруты где 401 — норма или сам refresh, не перехватываем
+  // Полностью пропускаем — сам refresh и ручки без токена
   const SKIP = [
-    '/auth/login', '/auth/signup', '/auth/refresh', '/auth/me',
+    '/auth/login', '/auth/signup', '/auth/refresh',
     '/auth/verify_mail', '/auth/update_email',
     '/auth//resend_verification_code',
   ];
+
+  // При 401 пробуем refresh, но НЕ редиректим если не помог
+  // (например /auth/me на главной — там 401 это норма)
+  const NO_REDIRECT = ['/auth/me'];
 
   let isRefreshing = false;
   let queue = [];
@@ -80,9 +84,9 @@ const auth = {
 
   async function doRefresh() {
     const r = await _fetch('/auth/refresh', { method: 'POST', credentials: 'include' });
-    if (!r.ok) return false;
+    if (!r.ok) return { ok: false };
     const d = await r.json().catch(() => ({}));
-    return d.success === true;
+    return { ok: d.success === true, data: d };
   }
 
   window.fetch = async function(...args) {
@@ -92,8 +96,10 @@ const auth = {
     const res = await _fetch(...args);
     if (res.status !== 401) return res;
 
-    // Получили 401 — пробуем refresh
+    const noRedirect = NO_REDIRECT.some(s => url.includes(s));
+
     if (isRefreshing) {
+      if (noRedirect) return res;
       return new Promise((resolve, reject) => {
         queue.push({
           resolve: async () => resolve(await _fetch(...args)),
@@ -103,14 +109,27 @@ const auth = {
     }
 
     isRefreshing = true;
-    const ok = await doRefresh().catch(() => false);
+    const { ok, data } = await doRefresh().catch(() => ({ ok: false }));
     isRefreshing = false;
 
     if (ok) {
+      // Обновляем данные юзера в localStorage если refresh вернул AuthResponse
+      if (data && data.name) {
+        const stored = JSON.parse(localStorage.getItem('sqlcraft_user') || '{}');
+        localStorage.setItem('sqlcraft_user', JSON.stringify({ ...stored, ...data }));
+        // Обновляем карточку юзера в navbar если она есть
+        const nameEl   = document.getElementById('user-name');
+        const planEl   = document.getElementById('user-plan');
+        const avatarEl = document.getElementById('user-avatar');
+        if (nameEl)   nameEl.textContent   = data.name;
+        if (planEl)   planEl.textContent   = data.plan || 'free';
+        if (avatarEl) avatarEl.textContent = (data.name || '?')[0].toUpperCase();
+      }
       flushQueue(true);
-      return _fetch(...args); // повторяем оригинальный запрос
+      return _fetch(...args);
     } else {
       flushQueue(false);
+      if (noRedirect) return res;
       localStorage.removeItem('sqlcraft_user');
       sessionStorage.setItem('auth_error', 'Сессия истекла, войдите снова');
       window.location.href = 'auth.html';
@@ -118,6 +137,27 @@ const auth = {
     }
   };
 })();
+
+/* ── REFRESH HELPER (публичный) ─────────────────────────── */
+async function tryRefreshSession() {
+  try {
+    const r = await fetch('/auth/refresh', { method: 'POST', credentials: 'include' });
+    if (!r.ok) return false;
+    const d = await r.json().catch(() => ({}));
+    if (d.success && d.name) {
+      const stored = JSON.parse(localStorage.getItem('sqlcraft_user') || '{}');
+      localStorage.setItem('sqlcraft_user', JSON.stringify({ ...stored, ...d }));
+      // Обновляем карточку юзера в navbar
+      const nameEl   = document.getElementById('user-name');
+      const planEl   = document.getElementById('user-plan');
+      const avatarEl = document.getElementById('user-avatar');
+      if (nameEl)   nameEl.textContent   = d.name;
+      if (planEl)   planEl.textContent   = d.plan || 'free';
+      if (avatarEl) avatarEl.textContent = (d.name || '?')[0].toUpperCase();
+    }
+    return d.success === true;
+  } catch { return false; }
+}
 
 /* ── API LAYER ──────────────────────────────────────────── */
 const api = {
@@ -227,29 +267,16 @@ const api = {
   },
 
   async deleteDB(dbId) {
-  try {
-    const res = await fetch('/user_db/delete_db', {
+    // db_id передаётся как query parameter
+    const res = await fetch(`/user_db/delete_db?db_id=${parseInt(dbId)}`, {
       method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ id: dbId }),
+      credentials: 'include',
     });
-    if (!res.ok) {
-      throw new Error("Ошибка сети или сервера");
-    }
+    if (!res.ok) throw new Error('Ошибка сети или сервера');
     const data = await res.json();
-
-    if (data.success === true) {
-      return { success: true };
-    } else {
-      throw new Error(data.message || "Ошибка при удалении базы данных!");
-    }
-  } catch (error) {
-    console.error("DeleteDB Error:", error);
-    throw error; 
-  }
-},
+    if (data.success === true) return { success: true };
+    throw new Error(data.message || 'Ошибка при удалении базы данных');
+  },
 
   async login(email, password) {
     const res = await fetch('/auth/login', {
@@ -276,7 +303,7 @@ const api = {
       throw { msg: data.detail || 'Неизвестная ошибка' };
     }
     const data = await res.json();
-    return { user: { id: data.id, name: data.name, email: data.email, plan: data.plan, is_verified: data.is_verified } };
+    return { user: { name: data.name, email: data.email, plan: data.plan } };
   },
 
   async register(name, email, password) {
@@ -307,7 +334,7 @@ const api = {
       throw { msg: data.detail || 'Неизвестная ошибка' };
     }
     const data = await res.json();
-    return { user: { id: data.id, name: data.name, email: data.email, plan: data.plan, is_verified: data.is_verified } };
+    return { user: { name: data.name, email: data.email, plan: data.plan } };
   },
 };
 

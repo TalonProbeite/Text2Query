@@ -204,7 +204,21 @@ async function initWorkshop() {
       return;
     }
 
-    list.innerHTML = dbs.map(db => {
+    // Кнопка "без БД" — позволяет работать без привязки к конкретной базе
+    const noneSelected = activeDBId === null;
+    const noneBtn = `
+      <div class="db-item ${noneSelected ? 'selected' : ''}" onclick="selectDB(null)"
+           style="margin-bottom:4px;">
+        <div class="db-item-row">
+          <span class="db-status-dot" style="background:var(--text-dim);box-shadow:none;"></span>
+          <div class="db-item-info">
+            <div class="db-item-alias">Без базы данных</div>
+            <div class="db-item-meta">только генерация SQL</div>
+          </div>
+        </div>
+      </div>`;
+
+    list.innerHTML = noneBtn + dbs.map(db => {
       const isSelected = db.id === activeDBId;
       const dot = db.is_active
         ? '<span class="db-status-dot active"></span>'
@@ -234,11 +248,11 @@ async function initWorkshop() {
     const active = getActiveDB();
     if (label) label.textContent = active
       ? `${active.db_alias} ${active.is_active ? '· активна' : '· нет сессии'}`
-      : 'База данных не выбрана';
+      : activeDBId === null ? 'Без базы данных' : 'База данных не выбрана';
   }
 
   window.selectDB = function(id) {
-    activeDBId = id;
+    activeDBId = id === null ? null : id;
     renderDBList();
   };
 
@@ -336,10 +350,7 @@ async function initWorkshop() {
   async function loadDBs() {
     try {
       dbs = await api.getUserDBs();
-      if (dbs.length && !activeDBId) {
-        activeDBId = dbs[0].id;
-        if (executeSection) executeSection.style.display = 'block';
-      }
+      if (dbs.length && !activeDBId) activeDBId = dbs[0].id;
     } catch {
       dbs = [];
     }
@@ -388,18 +399,40 @@ async function initWorkshop() {
   function addHistoryItem(entry) { history.unshift(entry); renderHistory(); }
 
   async function loadHistory() {
-    try { history = await api.getHistory(); }
-    catch { history = []; }
+    history = await api.getHistory(); // пробрасываем ошибку в initData
     renderHistory();
   }
 
-  // Запускаем оба запроса параллельно.
-  // Если токен истёк — перехватчик сделает refresh и повторит.
-  // Если refresh тоже не прошёл — перехватчик редиректит на auth.html.
-  await Promise.all([loadDBs(), loadHistory()]);
+  // Загружаем данные с явной обработкой 401:
+  // пробуем оба запроса, если 401 — refresh и повтор, если нет — редирект.
+  async function initData() {
+    try {
+      await Promise.all([loadDBs(), loadHistory()]);
+      document.body.style.visibility = 'visible';
+    } catch (err) {
+      // 401 — пробуем refresh
+      const refreshed = await tryRefreshSession();
+      if (refreshed) {
+        // Повторяем оба запроса с обновлёнными куками
+        try {
+          await Promise.all([loadDBs(), loadHistory()]);
+          document.body.style.visibility = 'visible';
+        } catch {
+          // Второй раз упало — показываем пустые списки
+          dbs = []; renderDBList();
+          history = []; renderHistory();
+          document.body.style.visibility = 'visible';
+        }
+      } else {
+        // Refresh не помог — редирект на авторизацию
+        localStorage.removeItem('sqlcraft_user');
+        sessionStorage.setItem('auth_error', 'Сессия истекла, войдите снова');
+        window.location.href = 'auth.html';
+      }
+    }
+  }
 
-  // Оба запроса прошли — показываем страницу
-  document.body.style.visibility = 'visible';
+  initData();
 
   /* ── LOGOUT ── */
   document.getElementById('logout-btn')?.addEventListener('click', () => auth.logout());
@@ -453,7 +486,10 @@ async function initWorkshop() {
     const sql = sqlEditor ? sqlEditor.value.trim() : currentSQL;
     if (!sql) { showToast('Сначала введите или сгенерируйте SQL', 'error'); return; }
     const db = getActiveDB();
-    if (!db) { showToast('Выберите базу данных', 'error'); return; }
+    if (!db) {
+      showToast('Выберите базу данных в сайдбаре для выполнения запроса', 'info');
+      return;
+    }
     if (!db.is_active) { showToast('Сначала активируйте сессию для этой БД', 'error'); openSessionModal(db.id, db.db_alias); return; }
 
     if (execBtn) { execBtn.disabled = true; execBtn.textContent = '▶ Выполнение...'; }
