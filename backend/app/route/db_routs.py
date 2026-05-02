@@ -36,6 +36,7 @@ async def connect_db(db_data:DbConnectCreat, request: Request , db:AsyncSession=
                                                                         "db_name": user_db.database_name,
                                                                         "username": user_db.db_username,
                                                                         "password_encrypted": password,
+                                                                        "ssl":user_db.ssl ,
                                                                         "struct": json.dumps(db_struct),
                                                                         "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")}), ex=28800)
         
@@ -44,10 +45,10 @@ async def connect_db(db_data:DbConnectCreat, request: Request , db:AsyncSession=
                                  db_name=user_db.database_name,
                                  is_active=True)
     except (DBConnectionError, DBQueryError) as e:
-        logger.exception(f"Connection to user database failed: {e.__cause__}")
+        logger.info(f"Connection to user database failed: {e.__cause__}")
         raise HTTPException(status_code=400 , detail="Connection to user database failed")
     except Exception as e:
-        logger.exception(f'Error connecting to user database:')
+        logger.info(f'Error connecting to user database:')
         raise HTTPException(status_code=500)
     finally:
         if service and service.engine:
@@ -71,7 +72,8 @@ async def execute_query(db_data:DbExecute, request: Request):
             "host": data["host"],
             "port": data["port"],
             "database_name": data["db_name"],
-            "dialect": data["dialect"]
+            "dialect": data["dialect"], 
+            "ssl":data["ssl"]
         }
 
         service = ConnectionDbService(connection_data)
@@ -84,7 +86,7 @@ async def execute_query(db_data:DbExecute, request: Request):
     except HTTPException:
         raise
     except Exception as e:
-        logger.info(f'Error connecting to user database: {e.__cause__}')
+        logger.exception(f'Error connecting to user database: {e.__cause__}')
         raise HTTPException(status_code=500)   
     finally:
         if service and service.engine:
@@ -136,6 +138,7 @@ async def start_session(user_credentials:StartSessionDb , request:Request ,db:As
                                                                         "db_name": db_config.database_name,
                                                                         "username": db_config.db_username,
                                                                         "password_encrypted": password,
+                                                                        "ssl":db_config.ssl ,
                                                                         "struct": json.dumps(db_struct),
                                                                         "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")}), ex=28800)
     
